@@ -127,7 +127,7 @@ def get_fixed_stress_stabilization_nd(model, l_factor: float = 0.6):
 #     return result
 
 
-def get_fs_fractures_analytical(model):
+def get_fs_fractures_analytical(model, zero_intersections: bool = True):
     alpha_biot = model.solid.biot_coefficient  # [-]
     lame_lambda = model.solid.lame_lambda  # [Pa]
     M = 1 / model.solid.specific_storage  # [Pa]
@@ -183,8 +183,9 @@ def get_fs_fractures_analytical(model):
     dt = model.time_manager.dt
     val /= dt
 
-    intersect_zeros = np.zeros(sum(f.num_cells for f in intersections))
-    val = np.concatenate([val, intersect_zeros])
+    if zero_intersections:
+        intersect_zeros = np.zeros(sum(f.num_cells for f in intersections))
+        val = np.concatenate([val, intersect_zeros])
 
     return scipy.sparse.diags(val)
 
@@ -222,8 +223,10 @@ def make_fs_analytical_slow_new(
     for group in groups:
         if group == p_mat_group:
             diagonals.append(get_fixed_stress_stabilization(model))
-        elif groups == p_frac_group:
-            diagonals.append(get_fs_fractures_analytical(model))
+        elif group == p_frac_group:
+            diagonals.append(
+                get_fs_fractures_analytical(model, zero_intersections=False)
+            )
         else:
             diagonals.append(index[[group]].mat)
     index.mat = scipy.sparse.block_diag(diagonals, format="csr")
