@@ -151,7 +151,7 @@ def make_model(setup: dict):
         dt_init = 1e-3
         if setup["grid_refinement"] >= 33:
             dt_init = 1e-4  # Is this necessary?
-        end_time = 5e2
+        end_time = setup.get('end_time', 5e2)
     porosity = 1.3e-2  # probably on the low side
 
     thermal_conductivity_multiplier = setup.get("thermal_conductivity_multiplier", 1)
@@ -241,33 +241,34 @@ def run_model(setup: dict):
 
     write_dofs_info(model)
     print(model.simulation_name())
+    return model
 
 
 if __name__ == "__main__":
 
-    # for friction_coef in [0.1, 0.9]:
-        # for thermal_conductivity_multiplier in [0.01, 100]:
+    # for friction_coef in [0.2]:
+    # for thermal_conductivity_multiplier in [0.01, 100]:
 
     common_params = {
         "geometry": "4h_steady",
         "save_matrix": False,
-    # "isothermal": False,
+        # "isothermal": False,
         # "friction_coef": friction_coef,
         # 'thermal_conductivity_multiplier': thermal_conductivity_multiplier,
     }
 
     for g in [
         1,
-        2,
-        5,
+        # 2,
+        # 5,
         # 25,
         # 33,
         # 40,
     ]:
         for s in [
-            'FGMRES',
+            # 'FGMRES',
             # "SAMG",
-            # "CPR",
+            "CPR",
             # "SAMG+ILU",
             # "S4_diag+ILU",
             # "AAMG+ILU",

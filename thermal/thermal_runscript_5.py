@@ -320,16 +320,16 @@ if __name__ == "__main__":
         "save_matrix": False,
     }
     for g in [
-        # 1,
+        1,
         # 2,
         # 5,
         # 10,
-        15,
-        20
+        # 15,
+        # 20
     ]:
         for s in [
-            'FGMRES',
-            # "CPR",
+            # 'FGMRES',
+            "CPR",
             # "SAMG",
             # "S4_diag",
             # "SAMG+ILU",
