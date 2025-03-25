@@ -180,8 +180,6 @@ def get_fs_fractures_analytical(model):
     dt = model.time_manager.dt
     val /= dt
 
-    intersect_zeros = np.zeros(sum(f.num_cells for f in intersections))
-    val = np.concatenate([val, intersect_zeros])
 
     return scipy.sparse.diags(val)
 
