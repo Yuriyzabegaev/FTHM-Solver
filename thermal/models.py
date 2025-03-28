@@ -51,6 +51,7 @@ class Physics(CubicLawPermeability, Thermoporomechanics):
         self.porosity = cache_ad_tree(self.porosity)
         self.opening_indicator = cache_ad_tree(self.opening_indicator)
         self.sliding_indicator = cache_ad_tree(self.sliding_indicator)
+        self.u_jump_t = cache_ad_tree(self.u_jump_t)
         super().prepare_simulation()
 
     def initial_condition(self) -> None:

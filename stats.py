@@ -7,7 +7,7 @@ import time
 import scipy.sparse
 import numpy as np
 import porepy as pp
-from porepy.models.solution_strategy import SolutionStrategy, ContactIndicators
+from porepy.models.solution_strategy import ContactIndicators
 
 
 @dataclass
@@ -238,3 +238,23 @@ class StatisticsSavingMixin(ContactIndicators):
         self._linear_solve_stats.state_id = state_id
         self._linear_solve_stats.matrix_id = mat_id
         self._linear_solve_stats.rhs_id = rhs_id
+
+    def u_jump_t(self, subdomains):
+        tangential = self.tangential_component(subdomains)
+        basis = self.basis(subdomains, dim=self.nd)
+        local_basis = self.basis(subdomains, dim=self.nd - 1)
+        tangential_to_nd = pp.ad.sum_operator_list(
+            [e_nd @ e_f.T for e_nd, e_f in zip(basis[:-1], local_basis)]
+        )
+        return tangential_to_nd @ tangential @ self.displacement_jump(subdomains)
+
+    def data_to_export(self):
+        data = super().data_to_export()
+        fractures = self.mdg.subdomains(dim=self.nd-1)
+
+        for frac in fractures:
+            u_jump_t = self.u_jump_t([frac])
+            vals_scaled = self.equation_system.evaluate(u_jump_t)
+            vals = self.units.convert_units(vals_scaled, 'm', to_si=True)
+            data.append((frac, 'u_jump_t', vals))
+        return data

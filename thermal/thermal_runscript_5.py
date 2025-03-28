@@ -10,6 +10,7 @@ XMAX = 1000
 YMAX = 2000
 ZMAX = 1000
 
+
 class Geometry(pp.PorePyModel):
     def bc_type_fluid_flux(self, sd: pp.Grid) -> pp.BoundaryCondition:
         sides = self.domain_boundary_sides(sd)
@@ -37,12 +38,12 @@ class Geometry(pp.PorePyModel):
         # 2683 * 10 * 3000
         val = self.units.convert_units(8e7, units="Pa")
         bc_values[1, sides.south] = +val * boundary_grid.cell_volumes[sides.south]
-        bc_values[2, sides.top] = -val * boundary_grid.cell_volumes[sides.top] * 0.9
+        bc_values[2, sides.top] = -val * boundary_grid.cell_volumes[sides.top] * 0.5
         bc_values[2, sides.bottom] = (
-            val * boundary_grid.cell_volumes[sides.bottom] * 0.9
+            val * boundary_grid.cell_volumes[sides.bottom] * 0.5
         )
-        bc_values[0, sides.west] = +val * boundary_grid.cell_volumes[sides.west] * 1.2
-        bc_values[0, sides.east] = (-val * boundary_grid.cell_volumes[sides.east]) * 1.2
+        bc_values[0, sides.west] = +val * boundary_grid.cell_volumes[sides.west] * 1.5
+        bc_values[0, sides.east] = (-val * boundary_grid.cell_volumes[sides.east]) * 1.5
         return bc_values.ravel("F")
 
     def locate_source(self, subdomains):
@@ -71,7 +72,7 @@ class Geometry(pp.PorePyModel):
         if self.params["setup"]["steady_state"]:
             return 0
         else:
-            return self.units.convert_units(1e3, "kg * s^-1")
+            return self.units.convert_units(1e2, "kg * s^-1")
             # maybe inject and then stop injecting?
 
     def fluid_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
@@ -83,8 +84,12 @@ class Geometry(pp.PorePyModel):
         src = self.locate_source(subdomains)
         src *= self.fluid_source_mass_rate()
         cv = self.fluid.components[0].specific_heat_capacity
+        t_inj = 40
+        if self.params["setup"].get("isothermal", False):
+            t_inj = self.reference_variable_values.temperature - 273
+
         t_inj = (
-            self.units.convert_units(273 + 40, "K")
+            self.units.convert_units(273 + t_inj, "K")
             - self.reference_variable_values.temperature
         )
         src *= cv * t_inj
@@ -208,7 +213,12 @@ class Geometry(pp.PorePyModel):
 
 
 class Setup(Geometry, THMSolver, StatisticsSavingMixin, Physics):
-    pass
+
+    def simulation_name(self):
+        name = super().simulation_name()
+        if self.params["setup"].get("isothermal", False):
+            name = f"{name}_isothermal"
+        return name
 
 
 def make_model(setup: dict):
@@ -226,7 +236,7 @@ def make_model(setup: dict):
     else:
         biot = 0.47
         dt_init = 1e-3
-        end_time = 2e3
+        end_time = 365 * 100
     porosity = 1.3e-2  # probably on the low side
 
     params = {
@@ -241,7 +251,7 @@ def make_model(setup: dict):
                 shear_modulus=shear,  # [Pa]
                 lame_lambda=lame,  # [Pa]
                 dilation_angle=5 * np.pi / 180,  # [rad]
-                normal_permeability=1e-4,
+                normal_permeability=1e-6,
                 # granite
                 biot_coefficient=biot,  # [-]
                 density=2683.0,  # [kg * m^-3]
@@ -279,7 +289,8 @@ def make_model(setup: dict):
         ),
         "units": pp.Units(kg=1e10),
         "meshing_arguments": {
-            "cell_size": (0.33 * 2250 / cell_size_multiplier),
+            "cell_size": (0.1 * XMAX / cell_size_multiplier),
+            "cell_size_boundary": (0.25 * XMAX / np.sqrt(cell_size_multiplier)),
         },
         # "refinement_level": cell_size_multiplier,
         # experimental
@@ -299,7 +310,7 @@ def run_model(setup: dict):
             "prepare_simulation": False,
             "progressbars": False,
             "nl_convergence_tol": float("inf"),
-            "nl_convergence_tol_res": 1e-7,
+            "nl_convergence_tol_res": 1e-8,
             "nl_divergence_tol": 1e8,
             "max_iterations": 10,
             # experimental
@@ -318,19 +329,21 @@ if __name__ == "__main__":
     common_params = {
         "geometry": "5",
         "save_matrix": False,
+        # "isothermal": True,
     }
     for g in [
+        0.5,
         1,
-        # 2,
-        # 5,
-        # 10,
+        2,
+        5,
+        6,
         # 15,
         # 20
     ]:
         for s in [
-            # 'FGMRES',
             "CPR",
-            # "SAMG",
+            "SAMG",
+            # 'FGMRES',
             # "S4_diag",
             # "SAMG+ILU",
             # "S4_diag+ILU",

@@ -446,13 +446,15 @@ class THMSolver(IterativeHMSolver):
                                     "ksp_rtol": inner_rtol,
                                     "ksp_pc_side": "right",
                                     "ksp_monitor": None,
+                                    'ksp_gmres_restart': 100,
+                                    'ksp_max_it': 200,
                                     #
                                     "pc_type": "hmg",
                                     "hmg_inner_pc_type": "hypre",
                                     "hmg_inner_pc_hypre_type": "boomeramg",
                                     "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.7,
                                     "mg_levels_ksp_type": "richardson",
-                                    "mg_levels_ksp_max_it": 2,
+                                    "mg_levels_ksp_max_it": 4,
                                     # 3D model has bad grid
                                     "mg_levels_pc_type": "ilu" if nd == 3 else "sor",
                                 }
@@ -461,6 +463,8 @@ class THMSolver(IterativeHMSolver):
                                 "ksp_type": "gmres",
                                 "ksp_rtol": inner_rtol,
                                 "ksp_pc_side": "right",
+                                'ksp_gmres_restart': 100,
+                                'ksp_max_it': 200,
                                 "ksp_monitor": None,
                             },
                             ksp_keep_use_pmat=True,
@@ -475,41 +479,20 @@ class THMSolver(IterativeHMSolver):
                                 ).mat,
                                 bsize=1,
                             ),
-                            complement=PetscCompositeScheme(
+                            complement=PetscFieldSplitScheme(
                                 groups=flow + temp,
-                                solvers=[
-                                    PetscFieldSplitScheme(
-                                        groups=flow,
-                                        fieldsplit_options={
-                                            "pc_fieldsplit_type": "additive",
-                                        },
-                                        elim_options={
-                                            "pc_type": "hypre",
-                                            "pc_hypre_type": "boomeramg",
-                                            "pc_hypre_boomeramg_strong_threshold": 0.7,
-                                        },
-                                        complement=PetscFieldSplitScheme(
-                                            groups=temp,
-                                            elim_options={
-                                                "pc_type": "none",
-                                            },
-                                        ),
+                                python_pc=lambda bmat: PcPythonPermutation(
+                                    make_pt_permutation(
+                                        bmat, p_groups=flow, t_groups=temp
                                     ),
-                                    PetscFieldSplitScheme(
-                                        groups=flow + temp,
-                                        python_pc=lambda bmat: PcPythonPermutation(
-                                            make_pt_permutation(
-                                                bmat, p_groups=flow, t_groups=temp
-                                            ),
-                                            block_size=2,
-                                        ),
-                                        elim_options={
-                                            "python_pc_type": "ilu",
-                                            # "python_pc_type": "hypre",
-                                            # "python_pc_hypre_type": "Euclid",
-                                        },
-                                    ),
-                                ],
+                                    block_size=2,
+                                ),
+                                elim_options={
+                                    "python_pc_type": "hypre",
+                                    "python_pc_hypre_type": "boomeramg",
+                                    "python_pc_hypre_boomeramg_strong_threshold": 0.7,
+                                    "python_pc_hypre_boomeramg_P_max": 16,
+                                },
                             ),
                         ),
                     ),
