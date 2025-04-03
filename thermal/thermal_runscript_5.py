@@ -1,3 +1,4 @@
+from pathlib import Path
 import porepy as pp
 import numpy as np
 import time
@@ -213,7 +214,6 @@ class Geometry(pp.PorePyModel):
 
 
 class Setup(Geometry, THMSolver, StatisticsSavingMixin, Physics):
-
     def simulation_name(self):
         name = super().simulation_name()
         if self.params["setup"].get("isothermal", False):
@@ -222,7 +222,6 @@ class Setup(Geometry, THMSolver, StatisticsSavingMixin, Physics):
 
 
 def make_model(setup: dict):
-
     cell_size_multiplier = setup["grid_refinement"]
 
     DAY = 24 * 60 * 60
@@ -236,7 +235,7 @@ def make_model(setup: dict):
     else:
         biot = 0.47
         dt_init = 1e-3
-        end_time = 365 * 100
+        end_time = 365 * 30
     porosity = 1.3e-2  # probably on the low side
 
     params = {
@@ -315,7 +314,7 @@ def run_model(setup: dict):
             "max_iterations": 10,
             # experimental
             "nonlinear_solver": ConstraintLineSearchNonlinearSolver,
-            "Global_line_search": 0,  # Set to 1 to use turn on a residual-based line search
+            "Global_line_search": 1,  # Set to 1 to use turn on a residual-based line search
             "Local_line_search": 1,  # Set to 0 to use turn off the tailored line search
         },
     )
@@ -325,7 +324,6 @@ def run_model(setup: dict):
 
 
 if __name__ == "__main__":
-
     common_params = {
         "geometry": "5",
         "save_matrix": False,
@@ -334,16 +332,16 @@ if __name__ == "__main__":
     for g in [
         0.5,
         1,
-        2,
-        5,
-        6,
+        # 2,
+        # 5,
+        # 6,
         # 15,
         # 20
     ]:
         for s in [
-            "CPR",
-            "SAMG",
-            # 'FGMRES',
+            # "SAMG",
+            # "CPR",
+            'FGMRES',
             # "S4_diag",
             # "SAMG+ILU",
             # "S4_diag+ILU",
@@ -357,6 +355,7 @@ if __name__ == "__main__":
             } | common_params
             run_model(params)
             end_state_filename = params["end_state_filename"]
+            # end_state_filename = '/home/porepy/volume/nrec_fhm/stats_thermal_geo5x2_solFGMRES_endstate_1743628386898.npy'
 
             print("Running injection")
             params = {

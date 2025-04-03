@@ -398,7 +398,7 @@ class THMSolver(IterativeHMSolver):
         mech = [3, 4]
         flow = [5, 6, 7]
         temp = [8, 9, 10]
-        inner_rtol = 1e-5
+        inner_rtol = 1e-3
         return LinearTransformedScheme(
             right_transformations=[
                 lambda bmat: self.Qright(contact_group=0, u_intf_group=4)
@@ -444,6 +444,7 @@ class THMSolver(IterativeHMSolver):
                                 {
                                     "ksp_type": "gmres",
                                     "ksp_rtol": inner_rtol,
+                                    'ksp_atol': 1e-4,
                                     "ksp_pc_side": "right",
                                     "ksp_monitor": None,
                                     'ksp_gmres_restart': 100,
@@ -452,16 +453,18 @@ class THMSolver(IterativeHMSolver):
                                     "pc_type": "hmg",
                                     "hmg_inner_pc_type": "hypre",
                                     "hmg_inner_pc_hypre_type": "boomeramg",
-                                    "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.7,
+                                    "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.6,
                                     "mg_levels_ksp_type": "richardson",
-                                    "mg_levels_ksp_max_it": 4,
+                                    "mg_levels_ksp_max_it": 2,
                                     # 3D model has bad grid
+                                    # "mg_levels_pc_type": "sor",
                                     "mg_levels_pc_type": "ilu" if nd == 3 else "sor",
                                 }
                             ),
                             keep_options={
                                 "ksp_type": "gmres",
                                 "ksp_rtol": inner_rtol,
+                                'ksp_atol': 1e-4,
                                 "ksp_pc_side": "right",
                                 'ksp_gmres_restart': 100,
                                 'ksp_max_it': 200,
