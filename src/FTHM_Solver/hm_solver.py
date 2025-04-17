@@ -362,10 +362,10 @@ class IterativeHMSolver(IterativeLinearSolver):
             else [],
             inner=PetscKSPScheme(
                 petsc_options={
-                    "ksp_rtol": 1e-10,
-                    "ksp_atol": 1e-15,
-                    "ksp_max_it": 90,
-                    "ksp_gmres_restart": 30,
+                    "ksp_rtol": config.get("ksp_rtol", 1e-10),
+                    "ksp_atol": config.get("ksp_atol", 1e-15),
+                    "ksp_max_it": config.get("ksp_max_it", 90),
+                    "ksp_gmres_restart": config.get("ksp_gmres_restart", 30),
                 }
                 | {"ksp_monitor": None}
                 if config.get("ksp_monitor", True)
