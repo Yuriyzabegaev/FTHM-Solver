@@ -1,6 +1,10 @@
 import pytest
 
-from solver_selection_thm.solver_space import CategoricalChoices, NumericalChoices, SolverSpace
+from solver_selection_thm.solver_space import (
+    CategoricalChoices,
+    NumericalChoices,
+    SolverSpace,
+)
 
 
 nd = 3
