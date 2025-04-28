@@ -201,7 +201,7 @@ def make_all_decisions_encoding(
         categorical_encoding = np.zeros((1, num_category_choices))
         categorical_encoding[:, categorical_decision] = 1
 
-        numerical_encoding = [np.arange(1) for _ in range(num_numerical_choices)]
+        numerical_encoding = [np.zeros(1) for _ in range(num_numerical_choices)]
         for i, choice in numerical_decision.items():
             numerical_encoding[i] = choice.choices
         x = np.atleast_2d(np.meshgrid(*numerical_encoding, indexing="ij"))
