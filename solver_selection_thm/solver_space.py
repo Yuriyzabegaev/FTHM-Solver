@@ -1,5 +1,5 @@
 from itertools import count, product
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Protocol
 import numpy as np
 
 
@@ -115,10 +115,15 @@ class ForkNode:
         return solver_space
 
 
+class SolverSchemeProtocol(Protocol):
+    def make_solver(self) -> Any:
+        pass
+
+
 class SolverSchemeBuilder:
     def build_solver_scheme_from_config(
         self, config: dict, build_inner_solver_scheme: Callable
-    ):
+    ) -> SolverSchemeProtocol:
         pass
 
 

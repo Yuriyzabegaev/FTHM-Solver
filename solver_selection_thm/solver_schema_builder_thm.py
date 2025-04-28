@@ -11,8 +11,9 @@ from solver_selection_thm.solver_space import SolverSchemeBuilder
 
 
 class PetscKSPSchemeBuilder(SolverSchemeBuilder):
-    @staticmethod
-    def build_solver_scheme_from_config(config: dict, build_inner_solver: callable):
+    def build_solver_scheme_from_config(
+        self, config: dict, build_inner_solver: callable
+    ):
         config = config.copy()
         del config["block_type"]
         pc_config = config.pop("preconditioner", None)
@@ -21,8 +22,9 @@ class PetscKSPSchemeBuilder(SolverSchemeBuilder):
 
 
 class PetscFieldSplitSchemeBuilder(SolverSchemeBuilder):
-    @staticmethod
-    def build_solver_scheme_from_config(config: dict, build_inner_solver: callable):
+    def build_solver_scheme_from_config(
+        self, config: dict, build_inner_solver: callable
+    ):
         config = config.copy()
         del config["block_type"]
         complement_config = config.pop("complement", None)
@@ -35,16 +37,18 @@ class PetscFieldSplitSchemeBuilder(SolverSchemeBuilder):
 
 
 class fs_analytical_slow_new_Builder(SolverSchemeBuilder):
-    @staticmethod
-    def build_solver_scheme_from_config(config: dict, build_inner_solver: callable):
+    def build_solver_scheme_from_config(
+        self, config: dict, build_inner_solver: callable
+    ):
         config = config.copy()
         del config["block_type"]
         return lambda bmat: make_fs_analytical_slow_new(**config)
 
 
 class PetscCompositeSchemeBuilder(SolverSchemeBuilder):
-    @staticmethod
-    def build_solver_scheme_from_config(config: dict, build_inner_solver: callable):
+    def build_solver_scheme_from_config(
+        self, config: dict, build_inner_solver: callable
+    ):
         config = config.copy()
         del config["block_type"]
         return PetscCompositeScheme(
@@ -58,8 +62,9 @@ class PetscCompositeSchemeBuilder(SolverSchemeBuilder):
 
 
 class PcPythonPermutationBuilder(SolverSchemeBuilder):
-    @staticmethod
-    def build_solver_scheme_from_config(config: dict, build_inner_solver: callable):
+    def build_solver_scheme_from_config(
+        self, config: dict, build_inner_solver: callable
+    ):
         config = config.copy()
         del config["block_type"]
         assert config["permutation_type"] == "pt_permutation"
