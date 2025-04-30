@@ -4,7 +4,7 @@ import numpy as np
 
 
 class CategoricalChoices:
-    def __init__(self, choices: list[dict]):
+    def __init__(self, choices: list[dict | Any]):
         self.choices = choices
 
     def __repr__(self):
@@ -12,8 +12,14 @@ class CategoricalChoices:
 
 
 class NumericalChoices:
-    def __init__(self, choices: np.ndarray, tag: Optional[str] = None):
+    def __init__(
+        self,
+        choices: np.ndarray,
+        tag: Optional[str] = None,
+        dtype: Optional[np.dtype] = None,
+    ):
         self.choices: np.ndarray = np.array(choices)
+        self.dtype: np.dtype = dtype or self.choices.dtype
         self.tag: str | None = tag
 
     def __repr__(self):
@@ -37,12 +43,14 @@ class FlatSolverDecision:
 
 
 class DecisionNode:
-    def __init__(self, solver_space_scheme: dict):
-        self.solver_space_scheme: dict = solver_space_scheme
+    def __init__(self, solver_space_scheme: dict | Any):
+        self.solver_space_scheme: dict | Any = solver_space_scheme
         self.children: list[ForkNode] = []
         self.numerical_choices: list[NumericalChoices] = []
 
     def _str(self, prefix="") -> str:
+        if not isinstance(self.solver_space_scheme, dict):
+            return f"{prefix}{self.solver_space_scheme}"
         k, v = next(iter(self.solver_space_scheme.items()))
         if isinstance(v, CategoricalChoices):
             v = "CategoricalChoices"
@@ -66,8 +74,9 @@ class DecisionNode:
         return self._str()
 
     def list_possible_solvers(self) -> list[FlatSolverDecision]:
+        my_numerical_choices = set(self.numerical_choices)
         if len(self.children) == 0:
-            flat_config = FlatSolverDecision(numerical=set(self.numerical_choices))
+            flat_config = FlatSolverDecision(numerical=my_numerical_choices)
             return [flat_config]
 
         children_solver_spaces = [c.list_possible_solvers() for c in self.children]
@@ -76,6 +85,7 @@ class DecisionNode:
         for tuple_of_decisions in list(product(*children_solver_spaces)):
             cat = set(x for conf in tuple_of_decisions for x in conf.categorical)
             num = set(x for conf in tuple_of_decisions for x in conf.numerical)
+            num |= my_numerical_choices
             merged_results.append(FlatSolverDecision(categorical=cat, numerical=num))
         return merged_results
 
@@ -122,9 +132,12 @@ class SolverSchemeProtocol(Protocol):
 
 class SolverSchemeBuilder:
     def build_solver_scheme_from_config(
-        self, config: dict, build_inner_solver_scheme: Callable
+        self,
+        config: dict,
+        build_inner_solver_scheme: Callable,
+        porepy_model,
     ) -> SolverSchemeProtocol:
-        pass
+        raise NotImplementedError
 
 
 def build_decision_tree(
@@ -247,7 +260,7 @@ class SolverSpace:
         self,
         decision: np.ndarray,
         decision_tree: Optional[DecisionNode] = None,
-        solver_space_scheme: Optional[dict] = None,
+        solver_space_scheme: Optional[dict | Any] = None,
     ):
         if solver_space_scheme is None:
             # Starting recursion
@@ -255,6 +268,9 @@ class SolverSpace:
         if decision_tree is None:
             # Starting recursion
             decision_tree = self.decision_tree
+        if not isinstance(solver_space_scheme, dict):
+            # Ending recursion
+            return solver_space_scheme
 
         numerical_choices_map = self.numerical_choices_map
         category_choices_map = self.category_choices_map
@@ -272,7 +288,7 @@ class SolverSpace:
             elif isinstance(value, NumericalChoices):
                 choice_idx = numerical_choices_map[id(value)] + num_category_choices
                 decision_value = decision[choice_idx]
-                config[key] = decision_value
+                config[key] = decision_value.astype(value.dtype)
 
             elif isinstance(value, CategoricalChoices):
                 is_chosen = False
@@ -305,9 +321,11 @@ class SolverSpace:
                 config[key] = value
         return config
 
-    def build_solver_scheme(self, config: dict):
+    def build_solver_scheme(self, config: dict, porepy_model):
         return self.solver_scheme_builders[
             config["block_type"]
         ].build_solver_scheme_from_config(
-            config=config, build_inner_solver_scheme=self.build_solver_scheme
+            config=config,
+            build_inner_solver_scheme=self.build_solver_scheme,
+            porepy_model=porepy_model,
         )

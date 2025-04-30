@@ -4,6 +4,7 @@ from solver_selection_thm.performance_predictor import (
     PerformancePredictorEpsGreedy,
     RewardEstimator,
 )
+from solver_selection_thm.selector import SolverSelector
 from solver_selection_thm.solver_space import (
     CategoricalChoices,
     NumericalChoices,
@@ -11,7 +12,7 @@ from solver_selection_thm.solver_space import (
 )
 
 
-nd = 3
+nd = 2
 contact = [0]
 intf = [1, 2]
 mech = [3, 4]
@@ -19,90 +20,112 @@ flow = [5, 6, 7]
 temp = [8, 9, 10]
 
 
-SOLVER_SPACE_SCHEME_FTHM = {
-    "block_type": "PetscKSPScheme",
-    "petsc_options": {
-        "ksp_monitor": None,
-        "ksp_rtol": 1e-12,
-    },
-    "compute_eigenvalues": False,
-    "preconditioner": {
-        "block_type": "PetscFieldSplitScheme",
-        "groups": contact,
-        "block_size": nd,
-        "fieldsplit_options": {
-            "pc_fieldsplit_schur_precondition": "selfp",
-        },
-        "elim_options": {
-            "pc_type": "pbjacobi",
-        },
-        "keep_options": {
-            "mat_schur_complement_ainv_type": "blockdiag",
-        },
-        "complement": {
-            "block_type": "PetscFieldSplitScheme",
-            "groups": intf,
-            "elim_options": {
-                "pc_type": "ilu",
+def make_solver_space_scheme_fthm(nd: int):
+    return {
+        "block_type": "LinearTransformedScheme",
+        "scale_energy_balance": True,
+        "Qright": True,
+        "inner": {
+            "block_type": "PetscKSPScheme",
+            "petsc_options": {
+                "ksp_monitor": None,
+                "ksp_rtol": 1e-12,
             },
-            "fieldsplit_options": {
-                "pc_fieldsplit_schur_precondition": "selfp",
-            },
-            "complement": {
+            "compute_eigenvalues": False,
+            "preconditioner": {
                 "block_type": "PetscFieldSplitScheme",
-                "groups": mech,
-                "elim_options": CategoricalChoices(
-                    [
-                        {
-                            "pc_type": "hmg",
-                            "hmg_inner_pc_type": "hypre",
-                            "hmg_inner_pc_hypre_type": "boomeramg",
-                            "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.7,
-                            "mg_levels_ksp_type": "richardson",
-                            "mg_levels_ksp_max_it": 2,
-                            "mg_levels_pc_type": "sor",
-                        },
-                        {
-                            "pc_type": "gamg",
-                            "pc_gamg_threshold": NumericalChoices(
-                                [0.01, 0.001, 0.0001]
-                            ),
-                        },
-                    ]
-                ),
+                "groups": contact,
                 "block_size": nd,
-                "invert": {
-                    "block_type": "fs_analytical_slow_new",
-                    "p_mat_group": 5,
-                    "p_frac_group": 6,
-                    "groups": flow + temp,
+                "fieldsplit_options": {
+                    "pc_fieldsplit_schur_precondition": "selfp",
+                },
+                "elim_options": {
+                    "pc_type": "pbjacobi",
+                },
+                "keep_options": {
+                    "mat_schur_complement_ainv_type": "blockdiag",
                 },
                 "complement": {
-                    "block_type": CategoricalChoices(
-                        [
-                            {
-                                "block_type": "PetscCompositeScheme",
-                                "groups": flow + temp,
-                                "solvers": {
-                                    0: {
-                                        "block_type": "PetscFieldSplitScheme",
-                                        "fieldsplit_options": {
-                                            "pc_fieldsplit_type": "additive",
-                                        },
-                                        "elim_options": {
-                                            "pc_type": "hypre",
-                                            "pc_hypre_type": "boomeramg",
-                                            "pc_hypre_boomeramg_strong_threshold": 0.7,
-                                        },
-                                        "complement": {
-                                            "block_type": "PetscFieldSplitScheme",
-                                            "groups": temp,
-                                            "elim_options": {
-                                                "pc_type": "none",
+                    "block_type": "PetscFieldSplitScheme",
+                    "groups": intf,
+                    "elim_options": {
+                        "pc_type": "ilu",
+                    },
+                    "fieldsplit_options": {
+                        "pc_fieldsplit_schur_precondition": "selfp",
+                    },
+                    "complement": {
+                        "block_type": "PetscFieldSplitScheme",
+                        "groups": mech,
+                        "elim_options": CategoricalChoices(
+                            [
+                                {
+                                    "pc_type": "hmg",
+                                    "hmg_inner_pc_type": "hypre",
+                                    "hmg_inner_pc_hypre_type": "boomeramg",
+                                    "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.7,
+                                    "mg_levels_ksp_type": "richardson",
+                                    "mg_levels_ksp_max_it": 2,
+                                    "mg_levels_pc_type": "sor",
+                                },
+                                {
+                                    "pc_type": "gamg",
+                                    "pc_gamg_threshold": NumericalChoices(
+                                        [0.01, 0.001, 0.0001]
+                                    ),
+                                },
+                            ]
+                        ),
+                        "block_size": nd,
+                        "invert": {
+                            "block_type": "fs_analytical_slow_new",
+                            "p_mat_group": 5,
+                            "p_frac_group": 6,
+                            "groups": flow + temp,
+                        },
+                        "complement": {
+                            "block_type": CategoricalChoices(
+                                [
+                                    {
+                                        "block_type": "PetscCompositeScheme",
+                                        "groups": flow + temp,
+                                        "solvers": {
+                                            0: {
+                                                "block_type": "PetscFieldSplitScheme",
+                                                "groups": flow,
+                                                "fieldsplit_options": {
+                                                    "pc_fieldsplit_type": "additive",
+                                                },
+                                                "elim_options": {
+                                                    "pc_type": "hypre",
+                                                    "pc_hypre_type": "boomeramg",
+                                                    "pc_hypre_boomeramg_strong_threshold": 0.7,
+                                                },
+                                                "complement": {
+                                                    "block_type": "PetscFieldSplitScheme",
+                                                    "groups": temp,
+                                                    "elim_options": {
+                                                        "pc_type": "none",
+                                                    },
+                                                },
+                                            },
+                                            1: {
+                                                "block_type": "PetscFieldSplitScheme",
+                                                "groups": flow + temp,
+                                                "python_pc": {
+                                                    "block_type": "PcPythonPermutation",
+                                                    "permutation_type": "pt_permutation",
+                                                    "p_groups": flow,
+                                                    "t_groups": temp,
+                                                    "block_size": 2,
+                                                },
+                                                "elim_options": {
+                                                    "python_pc_type": "ilu",
+                                                },
                                             },
                                         },
                                     },
-                                    1: {
+                                    {
                                         "block_type": "PetscFieldSplitScheme",
                                         "groups": flow + temp,
                                         "python_pc": {
@@ -113,35 +136,33 @@ SOLVER_SPACE_SCHEME_FTHM = {
                                             "block_size": 2,
                                         },
                                         "elim_options": {
-                                            "python_pc_type": "ilu",
+                                            "python_pc_type": "hypre",
+                                            "python_pc_hypre_type": "boomeramg",
+                                            "python_pc_hypre_boomeramg_strong_threshold": 0.7,
+                                            "python_pc_hypre_boomeramg_P_max": 16,
                                         },
                                     },
-                                },
-                            },
-                            {
-                                "block_type": "PetscFieldSplitScheme",
-                                "groups": flow + temp,
-                                "python_pc": {
-                                    "block_type": "PcPythonPermutation",
-                                    "permutation_type": "pt_permutation",
-                                    "p_groups": flow,
-                                    "t_groups": temp,
-                                    "block_size": 2,
-                                },
-                                "elim_options": {
-                                    "python_pc_type": "hypre",
-                                    "python_pc_hypre_type": "boomeramg",
-                                    "python_pc_hypre_boomeramg_strong_threshold": 0.7,
-                                    "python_pc_hypre_boomeramg_P_max": 16,
-                                },
-                            },
-                        ]
-                    ),
+                                ]
+                            ),
+                        },
+                    },
                 },
             },
         },
-    },
-}
+    }
+
+
+@pytest.fixture
+def porepy_model():
+    from porepy.models.thermoporomechanics import Thermoporomechanics
+    from thermal.thm_solver import THMSolver
+
+    class Model(THMSolver, Thermoporomechanics):
+        pass
+
+    model = Model()
+    model.prepare_simulation()
+    return model
 
 
 @pytest.mark.parametrize(
@@ -162,6 +183,75 @@ SOLVER_SPACE_SCHEME_FTHM = {
                 "elim_options": {"pc_type": "hypre"},
             },
         },
+        # CategoricalChoices with not dict inside
+        dict(
+            solver_space_scheme={
+                "block_type": "PetscFieldSplitScheme",
+                "a": CategoricalChoices(["b", "c"]),
+            },
+            num_possible_solvers=2,
+            expected_printing=(
+                "block_type: PetscFieldSplitScheme\n"
+                "| a (fork with 2 branches):\n"
+                "| | b\n"
+                "| | c"
+            ),
+            expected_config={
+                "block_type": "PetscFieldSplitScheme",
+                "a": "c",
+            },
+        ),
+        # Some nontrivial combination of numerical and categorical
+        dict(
+            solver_space_scheme={
+                "block_type": "PetscFieldSplitScheme",
+                "groups": mech,
+                "elim_options": CategoricalChoices(
+                    [
+                        {
+                            "pc_type": "hmg",
+                            "hmg_inner_pc_type": "hypre",
+                            "hmg_inner_pc_hypre_type": "boomeramg",
+                            "hmg_inner_pc_hypre_boomeramg_strong_threshold": NumericalChoices(
+                                [0.5, 0.6, 0.7, 0.8]
+                            ),
+                            "mg_levels_ksp_type": CategoricalChoices(
+                                ["chebyshev", "richardson"]
+                            ),
+                            "mg_levels_ksp_max_it": NumericalChoices([1, 2, 4, 8]),
+                            "mg_levels_pc_type": CategoricalChoices(["ilu", "sor"]),
+                        },
+                    ]
+                ),
+            },
+            num_possible_solvers=64,
+            expected_printing=(
+                "block_type: PetscFieldSplitScheme\n"
+                "| elim_options (fork with 1 branches):\n"
+                "| | pc_type: hmg\n"
+                "| | | hmg_inner_pc_hypre_boomeramg_strong_threshold: Choices from 0.5 to 0.8, len = 4\n"
+                "| | | mg_levels_ksp_max_it: Choices from 1 to 8, len = 4\n"
+                "| | | mg_levels_ksp_type (fork with 2 branches):\n"
+                "| | | | chebyshev\n"
+                "| | | | richardson\n"
+                "| | | mg_levels_pc_type (fork with 2 branches):\n"
+                "| | | | ilu\n"
+                "| | | | sor"
+            ),
+            expected_config={
+                "block_type": "PetscFieldSplitScheme",
+                "groups": mech,
+                "elim_options": {
+                    "pc_type": "hmg",
+                    "hmg_inner_pc_type": "hypre",
+                    "hmg_inner_pc_hypre_type": "boomeramg",
+                    "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.8,
+                    "mg_levels_ksp_type": "richardson",
+                    "mg_levels_ksp_max_it": 8,
+                    "mg_levels_pc_type": "sor",
+                },
+            },
+        ),
         # CategoricalChoices with inner block_type
         {
             "solver_space_scheme": {
@@ -464,10 +554,10 @@ SOLVER_SPACE_SCHEME_FTHM = {
         ),
         # Big boy (full FTHM)
         dict(
-            solver_space_scheme=SOLVER_SPACE_SCHEME_FTHM,
+            solver_space_scheme=make_solver_space_scheme_fthm(nd=2),
             num_possible_solvers=8,
             expected_printing=(
-                "block_type: PetscKSPScheme\n"
+                "block_type: LinearTransformedScheme\n"
                 "| elim_options (fork with 2 branches):\n"
                 "| | pc_type: hmg\n"
                 "| | pc_type: gamg\n"
@@ -477,63 +567,68 @@ SOLVER_SPACE_SCHEME_FTHM = {
                 "| | block_type: PetscFieldSplitScheme"
             ),
             expected_config={
-                "block_type": "PetscKSPScheme",
-                "petsc_options": {
-                    "ksp_monitor": None,
-                    "ksp_rtol": 1e-12,
-                },
-                "compute_eigenvalues": False,
-                "preconditioner": {
-                    "block_type": "PetscFieldSplitScheme",
-                    "groups": contact,
-                    "block_size": nd,
-                    "fieldsplit_options": {
-                        "pc_fieldsplit_schur_precondition": "selfp",
+                "block_type": "LinearTransformedScheme",
+                "Qright": True,
+                "scale_energy_balance": True,
+                "inner": {
+                    "block_type": "PetscKSPScheme",
+                    "petsc_options": {
+                        "ksp_monitor": None,
+                        "ksp_rtol": 1e-12,
                     },
-                    "elim_options": {
-                        "pc_type": "pbjacobi",
-                    },
-                    "keep_options": {
-                        "mat_schur_complement_ainv_type": "blockdiag",
-                    },
-                    "complement": {
+                    "compute_eigenvalues": False,
+                    "preconditioner": {
                         "block_type": "PetscFieldSplitScheme",
-                        "groups": intf,
-                        "elim_options": {
-                            "pc_type": "ilu",
-                        },
+                        "groups": contact,
+                        "block_size": nd,
                         "fieldsplit_options": {
                             "pc_fieldsplit_schur_precondition": "selfp",
                         },
+                        "elim_options": {
+                            "pc_type": "pbjacobi",
+                        },
+                        "keep_options": {
+                            "mat_schur_complement_ainv_type": "blockdiag",
+                        },
                         "complement": {
                             "block_type": "PetscFieldSplitScheme",
-                            "groups": mech,
+                            "groups": intf,
                             "elim_options": {
-                                "pc_type": "gamg",
-                                "pc_gamg_threshold": 0.0001,
+                                "pc_type": "ilu",
                             },
-                            "block_size": nd,
-                            "invert": {
-                                "block_type": "fs_analytical_slow_new",
-                                "p_mat_group": 5,
-                                "p_frac_group": 6,
-                                "groups": flow + temp,
+                            "fieldsplit_options": {
+                                "pc_fieldsplit_schur_precondition": "selfp",
                             },
                             "complement": {
                                 "block_type": "PetscFieldSplitScheme",
-                                "groups": flow + temp,
-                                "python_pc": {
-                                    "block_type": "PcPythonPermutation",
-                                    "permutation_type": "pt_permutation",
-                                    "p_groups": flow,
-                                    "t_groups": temp,
-                                    "block_size": 2,
-                                },
+                                "groups": mech,
                                 "elim_options": {
-                                    "python_pc_type": "hypre",
-                                    "python_pc_hypre_type": "boomeramg",
-                                    "python_pc_hypre_boomeramg_strong_threshold": 0.7,
-                                    "python_pc_hypre_boomeramg_P_max": 16,
+                                    "pc_type": "gamg",
+                                    "pc_gamg_threshold": 0.0001,
+                                },
+                                "block_size": nd,
+                                "invert": {
+                                    "block_type": "fs_analytical_slow_new",
+                                    "p_mat_group": 5,
+                                    "p_frac_group": 6,
+                                    "groups": flow + temp,
+                                },
+                                "complement": {
+                                    "block_type": "PetscFieldSplitScheme",
+                                    "groups": flow + temp,
+                                    "python_pc": {
+                                        "block_type": "PcPythonPermutation",
+                                        "permutation_type": "pt_permutation",
+                                        "p_groups": flow,
+                                        "t_groups": temp,
+                                        "block_size": 2,
+                                    },
+                                    "elim_options": {
+                                        "python_pc_type": "hypre",
+                                        "python_pc_hypre_type": "boomeramg",
+                                        "python_pc_hypre_boomeramg_strong_threshold": 0.7,
+                                        "python_pc_hypre_boomeramg_P_max": 16,
+                                    },
                                 },
                             },
                         },
@@ -559,69 +654,77 @@ def test_solver_space(params):
     assert config == expected_config
 
 
-def test_performance_predictor():
+class MockSolverSchemeBuilder:
+    def build_solver_scheme_from_config(
+        self,
+        config: dict,
+        build_inner_solver_scheme: callable,
+        porepy_model,
+    ):
+        return "my_scheme"
+
+
+def test_solver_selector():
     np.random.seed(42)
 
     solver_space = SolverSpace(
-        solver_space_scheme=SOLVER_SPACE_SCHEME_FTHM, solver_scheme_builders={}
+        solver_space_scheme=make_solver_space_scheme_fthm(nd=2),
+        solver_scheme_builders={"LinearTransformedScheme": MockSolverSchemeBuilder()},
     )
-    solvers = solver_space.all_decisions_encoding
+    num_solvers = solver_space.all_decisions_encoding.shape[0]
     performance_predictor = PerformancePredictorEpsGreedy(
-        num_solvers=solvers.shape[0], exploration=0.5, exploration_decrease_rate=0.9
+        num_solvers=num_solvers,
+        exploration=0.5,
+        exploration_decrease_rate=0.9,
     )
-
-    reward_estimator = RewardEstimator()
-
-    solver_in_use_idx: int | None = None
-
-    features_history: list[np.ndarray] = []
-    rewards_history: list[float] = []
-    choice_history: list[int] = []
-    greedy_list: list[bool] = []
-    expectation_list: list[float] = []
+    solver_selector = SolverSelector(
+        reward_estimator=RewardEstimator(),
+        solver_space=solver_space,
+        performance_predictor=performance_predictor,
+    )
+    solver_in_use_idx: None | int = None
 
     for time_step in range(100):
-        context = np.array([5, 6, 7.0]) + (time_step % 4)
-        context_size = context.size
-
-        solver_reused_flag = np.zeros((solvers.shape[0], 1))
-        if solver_in_use_idx is not None:
-            solver_reused_flag[solver_in_use_idx] = 1
-
-        context = np.broadcast_to(context, (solvers.shape[0], context_size))
-        features = np.concatenate([context, solver_reused_flag, solvers], axis=1)
-
-        choice, expectation, greedy = performance_predictor.select_solver(
-            features=features
+        characteristics = np.array([5, 6, 7.0]) + (time_step % 4)
+        scheme, choice = solver_selector.select_linear_solver_scheme(
+            characteristics=characteristics,
+            porepy_model=None,
+            active_solver_idx=solver_in_use_idx,
         )
+        assert scheme == "my_scheme"
 
-        _ = solver_space.config_from_decision(decision=solvers[choice])
-
-        solve_time = 0.5 + 0.5 * np.cos(choice / (solvers.shape[0] - 1) * 2 * np.pi)
+        solve_time = 0.5 + 0.5 * np.cos(choice / (num_solvers - 1) * 2 * np.pi)
         if solver_in_use_idx == choice:
             construct_time = 1e-2
         else:
-            construct_time = 1e-2 + 0.5 * np.sin(
-                choice / (solvers.shape[0] - 1) * np.pi
-            )
+            construct_time = 1e-2 + 0.5 * np.sin(choice / (num_solvers - 1) * np.pi)
+        solver_in_use_idx = choice
         success = choice != 4
 
-        reward = reward_estimator.estimate_reward(
+        solver_selector.provide_performance_feedback(
             solve_time=solve_time, construct_time=construct_time, success=success
         )
-        features_history.append(features[choice])
-        rewards_history.append(reward)
-        choice_history.append(choice)
-        greedy_list.append(greedy)
-        expectation_list.append(expectation)
-        solver_in_use_idx = choice
 
-        if performance_predictor.is_ready_to_predict:
-            performance_predictor.fit(
-                features=np.array(features_history),
-                rewards=np.array(rewards_history),
-            )
     # assert np.allclose(np.sum(rewards_history), 115.617)
     # assert np.allclose(np.sum(expectation_list), 3421.107)
-    assert np.sum(greedy_list) == 67
-    assert np.median(choice_history) == 3
+    assert np.sum(solver_selector.history.greedy) == 67
+    assert np.median(solver_selector.history.decision_idx) == 3
+
+
+@pytest.mark.parametrize("i", range(8))
+def test_scheme_builders(i: int, porepy_model):
+    from pp_binding import KNOWN_SOLVER_COMPONENTS_THM
+
+    porepy_model.before_nonlinear_loop()
+    porepy_model.before_nonlinear_iteration()
+    porepy_model.assemble_linear_system()
+
+    solver_space = SolverSpace(
+        solver_space_scheme=make_solver_space_scheme_fthm(nd=2),
+        solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
+    )
+    decision = solver_space.all_decisions_encoding[i]
+    scheme = solver_space.build_solver_scheme(
+        solver_space.config_from_decision(decision=decision), porepy_model=porepy_model
+    )
+    scheme.make_solver(porepy_model.bmat)

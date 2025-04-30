@@ -4,8 +4,6 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import SGDRegressor
 from sklearn.preprocessing import StandardScaler
 
-from tqdm import tqdm
-
 
 class OnlineSGDRegressor:
     def __init__(self, gamma=20.0, n_components=500, lr=0.001, alpha=1e-6):
@@ -52,9 +50,12 @@ class PerformancePredictorEpsGreedy:
         self.exploration_decrease_rate: float = exploration_decrease_rate
 
         self.is_ready_to_predict: bool = False
-        self.initial_choice_sequence = iter(
-            [i for i in range(self.num_solvers) for _ in range(2)]
-        )
+        initial_choice_sequence = [i for i in range(self.num_solvers) for _ in range(2)]
+        self.num_data_before_ready = len(initial_choice_sequence)
+        self.initial_choice_sequence = iter(initial_choice_sequence)
+
+        self.features: list[np.ndarray] = []
+        self.rewards: list[float] = []
 
         # self.regressor = OnlineSGDRegressor()
         self.regressor = GradientBoostingRegressor(random_state=42)
@@ -83,6 +84,8 @@ class PerformancePredictorEpsGreedy:
                 return choice, self.exploration_expectation, False
             except StopIteration:
                 self.is_ready_to_predict = True
+                self.regressor.fit(np.array(self.features), np.array(self.rewards))
+                # assert False, "You should not be here"
 
         greedy = np.random.random() > self.exploration
         if greedy:
@@ -92,22 +95,18 @@ class PerformancePredictorEpsGreedy:
             choice, expectation = self.random_choice()
         return choice, expectation, greedy
 
-    def fit(self, features: np.ndarray, rewards: np.ndarray):
-        self.regressor.fit(features, rewards)
+    def partial_fit(self, features: np.ndarray, reward: float):
+        self.features.append(features)
+        self.rewards.append(reward)
+        self.is_ready_to_predict = len(self.rewards) >= self.num_data_before_ready
+        if self.is_ready_to_predict:
+            self.regressor.fit(np.array(self.features), np.array(self.rewards))
 
 
 # Problems:
 # Save/load -> ignoring
 # Flag to reuse solver
 # fit
-
-
-from solver_selection_thm.solver_space import (
-    CategoricalChoices,
-    NumericalChoices,
-    SolverSpace,
-)
-
 
 
 class RewardEstimator:
@@ -121,3 +120,16 @@ class RewardEstimator:
         else:
             reward = -2 * abs(self.worst_known_reward)
         return reward
+
+
+def concatenate_characteristics_solvers(
+    characteristics: np.ndarray, solvers: np.ndarray, solver_in_use_idx: int | None
+) -> np.ndarray:
+    solver_reused_flag = np.zeros((solvers.shape[0], 1))
+    if solver_in_use_idx is not None:
+        solver_reused_flag[solver_in_use_idx] = 1
+
+    characteristics = np.broadcast_to(
+        characteristics, (solvers.shape[0], characteristics.size)
+    )
+    return np.concatenate([characteristics, solver_reused_flag, solvers], axis=1)
