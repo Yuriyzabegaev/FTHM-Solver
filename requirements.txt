@@ -1,1 +1,7 @@
 pandas
+scipy==1.15.2
+petsc4py==3.21.0.dev0
+numba==0.61.2
+numpy==1.26.4
+meshio==5.3.5
+matplotlib==3.10.1
