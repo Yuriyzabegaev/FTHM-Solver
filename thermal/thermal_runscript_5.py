@@ -340,8 +340,8 @@ if __name__ == "__main__":
     ]:
         for s in [
             # "SAMG",
-            # "CPR",
-            'FGMRES',
+            "CPR",
+            # 'FGMRES',
             # "S4_diag",
             # "SAMG+ILU",
             # "S4_diag+ILU",
