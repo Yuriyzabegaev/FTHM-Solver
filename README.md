@@ -20,7 +20,7 @@ The code is tested and works with porepy commit 9befd80f7c22c4818518d0714452b445
 
 (do git checkout 9befd80f7c22c4818518d0714452b44502306c4b in the porepy repo).
 
-In the container, run the [experiments](experiments/) with `python`. Their results can be visualized in jupyter notebooks in the same folder, I use VSCode for it.
+In the container, run the experiments: `python thermal/thermal_model_4.py` corresponds to the 2D experiment, while `python thermal/thermal_model_5.py` corresponds for the 3D experiment. The experiment parameters can be adjusted in the corresponding files. Results can be visualized in jupyter notebooks in the same folder, I use VSCode for it.
 
 # Understand the code
 
