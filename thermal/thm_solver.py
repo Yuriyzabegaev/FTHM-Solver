@@ -42,12 +42,11 @@ from iterative_solver import (
 
 
 class THMSolver(IterativeHMSolver):
-
     def simulation_name(self) -> str:
         name = "stats_thermal"
         setup = self.params["setup"]
-        name = f'{name}_geo{setup["geometry"]}x{setup["grid_refinement"]}'
-        name = f'{name}_sol{setup["solver"]}'
+        name = f"{name}_geo{setup['geometry']}x{setup['grid_refinement']}"
+        name = f"{name}_sol{setup['solver']}"
         if (bc := setup.get("thermal_diffusion_bc")) not in ("dir", None):
             name = f"{name}_bc{bc}"
         return name
@@ -444,11 +443,11 @@ class THMSolver(IterativeHMSolver):
                                 {
                                     "ksp_type": "gmres",
                                     "ksp_rtol": inner_rtol,
-                                    'ksp_atol': 1e-4,
+                                    "ksp_atol": 1e-4,
                                     "ksp_pc_side": "right",
                                     "ksp_monitor": None,
-                                    'ksp_gmres_restart': 100,
-                                    'ksp_max_it': 200,
+                                    "ksp_gmres_restart": 100,
+                                    "ksp_max_it": 200,
                                     #
                                     "pc_type": "hmg",
                                     "hmg_inner_pc_type": "hypre",
@@ -464,10 +463,10 @@ class THMSolver(IterativeHMSolver):
                             keep_options={
                                 "ksp_type": "gmres",
                                 "ksp_rtol": inner_rtol,
-                                'ksp_atol': 1e-4,
+                                "ksp_atol": 1e-4,
                                 "ksp_pc_side": "right",
-                                'ksp_gmres_restart': 100,
-                                'ksp_max_it': 200,
+                                "ksp_gmres_restart": 100,
+                                "ksp_max_it": 200,
                                 "ksp_monitor": None,
                             },
                             ksp_keep_use_pmat=True,

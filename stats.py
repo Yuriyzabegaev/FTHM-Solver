@@ -114,9 +114,9 @@ class StatisticsSavingMixin(ContactIndicators):
         self._linear_solve_stats = LinearSolveStats()
         super().before_nonlinear_iteration()
         self.collect_stats_sticking_sliding_open()
-        self.collect_stats_ut_mismatch()
-        self.collect_stats_coulomb_mismatch()
-        self.collect_stats_u_lambda_max()
+        # self.collect_stats_ut_mismatch()
+        # self.collect_stats_coulomb_mismatch()
+        # self.collect_stats_u_lambda_max()
 
     def after_nonlinear_iteration(self, solution_vector: np.ndarray) -> None:
         print(
@@ -164,7 +164,7 @@ class StatisticsSavingMixin(ContactIndicators):
         tangential_basis: list[pp.ad.SparseArray] = self.basis(
             fractures, dim=self.nd - 1
         )
-        scalar_to_tangential = pp.ad.sum_operator_list(
+        scalar_to_tangential = pp.ad.sum_projection_list(
             [e_i for e_i in tangential_basis]
         ).value(self.equation_system)
         sticking = (scalar_to_tangential @ sticking).astype(bool)
@@ -241,12 +241,17 @@ class StatisticsSavingMixin(ContactIndicators):
 
     def u_jump_t(self, subdomains):
         tangential = self.tangential_component(subdomains)
+        # basis = self.basis(subdomains, dim=self.nd)
+        # local_basis = self.basis(subdomains, dim=self.nd - 1)
+        # tangential_to_nd = pp.ad.sum_operator_list(
+        #     [e_nd @ e_f.T for e_nd, e_f in zip(basis[:-1], local_basis)]
+        # )
         basis = self.basis(subdomains, dim=self.nd)
         local_basis = self.basis(subdomains, dim=self.nd - 1)
-        tangential_to_nd = pp.ad.sum_operator_list(
+        tangential_to_nd = pp.ad.sum_projection_list(
             [e_nd @ e_f.T for e_nd, e_f in zip(basis[:-1], local_basis)]
         )
-        return tangential_to_nd @ tangential @ self.displacement_jump(subdomains)
+        return tangential_to_nd @ (tangential @ self.displacement_jump(subdomains))
 
     def data_to_export(self):
         data = super().data_to_export()

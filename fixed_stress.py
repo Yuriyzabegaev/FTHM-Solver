@@ -158,12 +158,14 @@ def get_fs_fractures_analytical(model, zero_intersections: bool = True):
     #     * alpha_biot**2
     #     / (lame_lambda * (1 + porosity * M * compressibility))
     # )
-
-    val = (
-        alpha_biot**2
-        * u_n  # / resid_aperture# ** 3
-        / (lame_lambda / (compressibility * M) + porosity * lame_lambda)
-    )
+    if compressibility != 0:
+        val = (
+            alpha_biot**2
+            * u_n  # / resid_aperture# ** 3
+            / (lame_lambda / (compressibility * M) + porosity * lame_lambda)
+        )
+    else:
+        val = 0
 
     if len(fractures) == 0:
         return scipy.sparse.csr_matrix((0, 0))

@@ -124,7 +124,8 @@ class IterativeLinearSolver(pp.PorePyModel):
         except:
             self.save_matrix_state()
             raise
-        print("Construction took:", round(time.time() - t0, 2))
+        self._construction_time = time.time() - t0
+        print("Construction took:", round(self._construction_time, 2))
 
         # Permute the rhs groups to match mat_permuted.
         rhs_local = bmat.project_rhs_to_local(rhs)
@@ -135,7 +136,8 @@ class IterativeLinearSolver(pp.PorePyModel):
         except:
             self.save_matrix_state()
             raise
-        print("Solve took:", round(time.time() - t0, 2))
+        self._solve_time = time.time() - t0
+        print("Solve took:", round(self._solve_time, 2))
 
         info = solver.ksp.getConvergedReason()
 

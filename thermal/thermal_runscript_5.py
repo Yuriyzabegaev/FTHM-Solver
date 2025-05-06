@@ -331,7 +331,7 @@ if __name__ == "__main__":
     }
     for g in [
         0.5,
-        1,
+        # 1,
         # 2,
         # 5,
         # 6,
@@ -339,9 +339,9 @@ if __name__ == "__main__":
         # 20
     ]:
         for s in [
-            # "SAMG",
+            "SAMG",
             # "CPR",
-            'FGMRES',
+            # 'FGMRES',
             # "S4_diag",
             # "SAMG+ILU",
             # "S4_diag+ILU",
