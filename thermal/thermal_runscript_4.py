@@ -5,7 +5,6 @@ from thermal.models import Physics, ConstraintLineSearchNonlinearSolver
 from thermal.thm_solver import THMSolver
 from plot_utils import write_dofs_info
 from stats import StatisticsSavingMixin
-from porepy.applications.md_grids.fracture_sets import benchmark_2d_case_3
 
 XMAX = 2000
 YMAX = 2000

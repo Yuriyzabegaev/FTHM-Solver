@@ -3,7 +3,7 @@ from functools import cached_property
 import json
 from pathlib import Path
 from dataclasses import asdict
-import time 
+import time
 import scipy.sparse
 import numpy as np
 import porepy as pp
@@ -85,11 +85,11 @@ class StatisticsSavingMixin(ContactIndicators):
     def simulation_name(self) -> str:
         name = "stats"
         setup = self.params["setup"]
-        name = f'{name}_geo{setup["geometry"]}x{setup["grid_refinement"]}'
-        name = f'{name}_sol{setup["solver"]}'
-        name = f'{name}_ph{setup["physics"]}'
-        name = f'{name}_bb{setup["barton_bandis_stiffness_type"]}'
-        name = f'{name}_fr{setup["friction_type"]}'
+        name = f"{name}_geo{setup['geometry']}x{setup['grid_refinement']}"
+        name = f"{name}_sol{setup['solver']}"
+        name = f"{name}_ph{setup['physics']}"
+        name = f"{name}_bb{setup['barton_bandis_stiffness_type']}"
+        name = f"{name}_fr{setup['friction_type']}"
         return name
 
     def before_nonlinear_loop(self) -> None:
@@ -97,7 +97,9 @@ class StatisticsSavingMixin(ContactIndicators):
         self.statistics.append(self._time_step_stats)
         print()
         DAY = 24 * 60 * 60
-        print(f"Sim time: {self.time_manager.time / DAY :.2e}, Dt: {self.time_manager.dt / DAY :.2e} (days)")
+        print(
+            f"Sim time: {self.time_manager.time / DAY:.2e}, Dt: {self.time_manager.dt / DAY:.2e} (days)"
+        )
         super().before_nonlinear_loop()
 
     def after_nonlinear_convergence(self) -> None:
@@ -115,7 +117,7 @@ class StatisticsSavingMixin(ContactIndicators):
         super().before_nonlinear_iteration()
         self.collect_stats_sticking_sliding_open()
         self.collect_stats_ut_mismatch()
-        self.collect_stats_coulomb_mismatch()
+        # self.collect_stats_coulomb_mismatch()
         self.collect_stats_u_lambda_max()
 
     def after_nonlinear_iteration(self, solution_vector: np.ndarray) -> None:
@@ -129,6 +131,7 @@ class StatisticsSavingMixin(ContactIndicators):
         #     self.save_matrix_state()
         dump_json(self.simulation_name() + ".json", self.statistics)
         from plot_utils import write_dofs_info
+
         write_dofs_info(self)
         super().after_nonlinear_iteration(solution_vector)
 
@@ -164,10 +167,10 @@ class StatisticsSavingMixin(ContactIndicators):
         tangential_basis: list[pp.ad.SparseArray] = self.basis(
             fractures, dim=self.nd - 1
         )
-        scalar_to_tangential = pp.ad.sum_operator_list(
-            [e_i for e_i in tangential_basis]
+        sticking = (
+            pp.ad.sum_projection_list([e_i for e_i in tangential_basis]) @ sticking
         ).value(self.equation_system)
-        sticking = (scalar_to_tangential @ sticking).astype(bool)
+        sticking = sticking.astype(bool)
 
         u_t_sticking = u_t_increment[sticking]
         try:
@@ -219,7 +222,7 @@ class StatisticsSavingMixin(ContactIndicators):
         save_path.mkdir(exist_ok=True)
         mat, rhs = self.linear_system
         name = f"{self.simulation_name()}_{int(time.time() * 1000)}"
-        print('Saving matrix', name)
+        print("Saving matrix", name)
         mat_id = f"{name}.npz"
         rhs_id = f"{name}_rhs.npy"
         state_id = f"{name}_state.npy"
@@ -243,18 +246,18 @@ class StatisticsSavingMixin(ContactIndicators):
         tangential = self.tangential_component(subdomains)
         basis = self.basis(subdomains, dim=self.nd)
         local_basis = self.basis(subdomains, dim=self.nd - 1)
-        tangential_to_nd = pp.ad.sum_operator_list(
+        tangential_to_nd = pp.ad.sum_projection_list(
             [e_nd @ e_f.T for e_nd, e_f in zip(basis[:-1], local_basis)]
         )
-        return tangential_to_nd @ tangential @ self.displacement_jump(subdomains)
+        return tangential_to_nd @ (tangential @ self.displacement_jump(subdomains))
 
     def data_to_export(self):
         data = super().data_to_export()
-        fractures = self.mdg.subdomains(dim=self.nd-1)
+        fractures = self.mdg.subdomains(dim=self.nd - 1)
 
         for frac in fractures:
             u_jump_t = self.u_jump_t([frac])
             vals_scaled = self.equation_system.evaluate(u_jump_t)
-            vals = self.units.convert_units(vals_scaled, 'm', to_si=True)
-            data.append((frac, 'u_jump_t', vals))
+            vals = self.units.convert_units(vals_scaled, "m", to_si=True)
+            data.append((frac, "u_jump_t", vals))
         return data
