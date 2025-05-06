@@ -11,7 +11,7 @@ The experiments are based on [PorePy](https://github.com/pmgbergen/porepy) and [
 A Docker image with the full environment is available on Zenodo (TODO). Download the image and run these commands ([Docker](https://www.docker.com/) should be installed):
 ```
 docker load -i fthm_solver.tar.gz
-docker run -it --name fthm_solver fthm_solver:latest
+docker run -dit --name fthm_solver fthm_solver:latest
 docker exec -it fthm_solver /bin/bash
 ```
 Please don't forget to pull the recent changes with `git pull`.
