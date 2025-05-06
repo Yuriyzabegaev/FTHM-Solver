@@ -1,14 +1,18 @@
-# An Effificent Preconditioner For Mixed-Dimensional Contact Poromechanics Based On The Fixed Stress Splitting Scheme
+# Preconditioners for Thermo-PoroMechanics with Frictional Contact Mechanics of Fractures 
 
-This repository contains the source code of the algorithm from the publication (to be done). This implements an iterative linear solver to address the contact poromechanics problem. The implementation is based on [PorePy](https://github.com/pmgbergen/porepy) and [PETSc](https://petsc.org/).
+This repository contains the source code of the algorithms for two publications:
+* for the isothermal problem, see the [pre-print](https://arxiv.org/abs/2501.07441). The code is located in `main` branch ([switch to it](https://github.com/Yuriyzabegaev/FTHM-Solver/tree/main)).
+* for the non-isothermal problem, see the pre-print (to be done). The code is located in the `thermal` branch (you are here now).
 
-# Reproduce the experiments
+The experiments are based on [PorePy](https://github.com/pmgbergen/porepy) and [PETSc](https://petsc.org/).
 
-A Docker image with the full environment is available on Zenodo ([here](https://zenodo.org/records/14609885)). Download the image and run these commands ([Docker](https://www.docker.com/) should be installed):
+# Reproduce the non-isothermal experiments
+
+A Docker image with the full environment is available on Zenodo (TODO). Download the image and run these commands ([Docker](https://www.docker.com/) should be installed):
 ```
-docker load -i fhm_solver.tar.gz
-docker run -it --name fhm_solver fhm_solver:latest
-docker exec -it fhm_solver /bin/bash
+docker load -i fthm_solver.tar.gz
+docker run -it --name fthm_solver fthm_solver:latest
+docker exec -it fthm_solver /bin/bash
 ```
 Please don't forget to pull the recent changes with `git pull`.
 
