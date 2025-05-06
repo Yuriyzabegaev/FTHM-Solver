@@ -16,9 +16,9 @@ docker exec -it fthm_solver /bin/bash
 ```
 Please don't forget to pull the recent changes with `git pull`.
 
-The code is tested and works with porepy commit 9befd80f7c22c4818518d0714452b44502306c4b:
+The code is tested and works with porepy commit `9befd80f7c22c4818518d0714452b44502306c4b`:
 
-(do git checkout 9befd80f7c22c4818518d0714452b44502306c4b in the porepy repo).
+(do `git checkout 9befd80f7c22c4818518d0714452b44502306c4b` in the porepy repo).
 
 In the container, run the experiments: `python thermal/thermal_model_4.py` corresponds to the 2D experiment, while `python thermal/thermal_model_5.py` corresponds for the 3D experiment. The experiment parameters can be adjusted in the corresponding files. Results can be visualized in jupyter notebooks in the same folder, I use VSCode for it.
 
