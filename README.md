@@ -11,7 +11,7 @@ The experiments are based on [PorePy](https://github.com/pmgbergen/porepy) and [
 A Docker image with the full environment is available on Zenodo ([here](https://zenodo.org/records/14609885)). Download the image and run these commands ([Docker](https://www.docker.com/) should be installed):
 ```
 docker load -i fhm_solver.tar.gz
-docker run -it --name fhm_solver fhm_solver:latest
+docker run -dit --name fhm_solver fhm_solver:latest
 docker exec -it fhm_solver /bin/bash
 ```
 Please don't forget to pull the recent changes with `git pull`.
