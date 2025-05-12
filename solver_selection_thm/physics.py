@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from porepy.models.constitutive_laws import GravityForce, CubicLawPermeability
 
 from stats import StatisticsSavingMixin
-
+from thermal.thm_solver import THMSolver
 
 XMAX = 2000
 YMAX = 1000
@@ -12,7 +12,13 @@ ZMAX = 1000
 DAY = float(24 * 60 * 60)
 
 
-class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
+class ModelTHM(THMSolver, CubicLawPermeability, pp.Thermoporomechanics):
+    def ic_values_temperature(self, sd: pp.Grid) -> np.ndarray:
+        return np.ones(sd.num_cells) * self.units.convert_units(273 + 120, "K")
+
+    def ic_values_pressure(self, sd: pp.Grid) -> np.ndarray:
+        return np.ones(sd.num_cells) * self.reference_variable_values.pressure
+
     def simulation_name(self) -> str:
         return "solver_selection"
 
@@ -35,12 +41,15 @@ class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
         return bc
 
     def bc_type_enthalpy_flux(self, sd: pp.Grid) -> pp.BoundaryCondition:
-        domain_sides = self.domain_boundary_sides(sd)
-        return pp.BoundaryCondition(sd, domain_sides.all_bf, "dir")
+        sides = self.domain_boundary_sides(sd)
+        return pp.BoundaryCondition(sd, sides.all_bf, "dir")
 
     def bc_type_fourier_flux(self, sd: pp.Grid) -> pp.BoundaryCondition:
-        domain_sides = self.domain_boundary_sides(sd)
-        return pp.BoundaryCondition(sd, domain_sides.all_bf, "dir")
+        sides = self.domain_boundary_sides(sd)
+        return pp.BoundaryCondition(sd, sides.all_bf, "neu")
+
+    def bc_values_temperature(self, bg):
+        return self.units.convert_units(273 + 120, "K") * np.ones(bg.num_cells)
 
     def bc_values_stress(self, boundary_grid: pp.BoundaryGrid) -> np.ndarray:
         sides = self.domain_boundary_sides(boundary_grid)
@@ -49,9 +58,9 @@ class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
         # 2683 * 10 * 3000
         val = self.units.convert_units(8e7, units="Pa")
         cell_volumes = boundary_grid.cell_volumes
-        bc_values[2, sides.top] = -val * cell_volumes[sides.south]
-        bc_values[1, sides.south] = +val * cell_volumes[sides.top] * 1.2
-        bc_values[1, sides.north] = -(val * cell_volumes[sides.bottom]) * 1.2
+        bc_values[2, sides.top] = -val * cell_volumes[sides.top]
+        bc_values[1, sides.south] = +val * cell_volumes[sides.south] * 1.2
+        bc_values[1, sides.north] = -(val * cell_volumes[sides.north]) * 1.2
         bc_values[0, sides.west] = +val * cell_volumes[sides.west] * 0.8
         bc_values[0, sides.east] = -val * cell_volumes[sides.east] * 0.8
         return bc_values.ravel("F")
@@ -87,36 +96,37 @@ class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
             return self._source_rate
 
     def fluid_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5, zwell=0.5)
-        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5, zwell=0.5)
         rate = self.fluid_source_rate()
+
+        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5, zwell=0.5)
         inj_density = self.fluid.reference_component.density
+
         prod_density = self.fluid.density(subdomains)
+        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5, zwell=0.5)
+
         return (
             super().fluid_source(subdomains)
-            # + pp.ad.DenseArray(inj_loc * inj_density) * rate
+            + pp.ad.DenseArray(inj_loc * inj_density) * rate
             - pp.ad.DenseArray(prod_loc) * prod_density * rate
         )
 
     def energy_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-        inj_density = self.fluid.reference_component.density
-        prod_density = self.fluid.density(subdomains)
-        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5, zwell=0.5)
-        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5, zwell=0.5)
         cv = self.fluid.components[0].specific_heat_capacity
-        t_inj = self.units.convert_units(273 + 40, "K")
         t_ref = self.reference_variable_values.temperature
-        inj = pp.ad.DenseArray(inj_loc * cv * (t_inj - t_ref) * inj_density)
-        prod = (
-            pp.ad.DenseArray(prod_loc * cv)
-            * (self.temperature(subdomains) - t_ref)
-            * prod_density
-        )
         rate = self.fluid_source_rate()
+
+        inj_density = self.fluid.reference_component.density
+        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5, zwell=0.5)
+        t_inj = self.units.convert_units(273 + 40, "K")
+
+        prod_density = self.fluid.density(subdomains)
+        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5, zwell=0.5)
+        t_prod = self.temperature(subdomains)
+
         return (
             super().energy_source(subdomains)
-            # + (inj) * rate
-            - prod * rate
+            + pp.ad.DenseArray(inj_loc * cv * (t_inj - t_ref) * inj_density) * rate
+            - pp.ad.DenseArray(prod_loc * cv) * (t_prod - t_ref) * prod_density * rate
         )
 
     def set_domain(self):
@@ -135,12 +145,12 @@ class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
         fracs = [
             # injection cluster
             [[0.2, 0.4, 0.4, 0.2], [0.45, 0.45, 0.45, 0.45], [0.3, 0.3, 0.6, 0.6]],
-            [[0.225, 0.48, 0.48, 0.225], [0.4, 0.4, 0.8, 0.8], [0.4, 0.7, 0.7, 0.4]],
-            [[0.225, 0.48, 0.48, 0.225], [0.4, 0.4, 0.8, 0.8], [0.6, 0.3, 0.3, 0.6]],
+            [[0.225, 0.49, 0.49, 0.225], [0.4, 0.4, 0.8, 0.8], [0.4, 0.7, 0.7, 0.4]],
+            [[0.225, 0.49, 0.49, 0.225], [0.4, 0.4, 0.8, 0.8], [0.6, 0.3, 0.3, 0.6]],
             # production cluster
             [[0.6, 0.8, 0.8, 0.6], [0.55, 0.55, 0.55, 0.55], [0.3, 0.3, 0.6, 0.6]],
-            [[0.52, 0.775, 0.775, 0.52], [0.3, 0.3, 0.7, 0.7], [0.3, 0.6, 0.6, 0.3]],
-            [[0.52, 0.775, 0.775, 0.52], [0.3, 0.3, 0.7, 0.7], [0.7, 0.4, 0.4, 0.7]],
+            [[0.51, 0.775, 0.775, 0.51], [0.3, 0.3, 0.7, 0.7], [0.3, 0.6, 0.6, 0.3]],
+            [[0.51, 0.775, 0.775, 0.51], [0.3, 0.3, 0.7, 0.7], [0.7, 0.4, 0.4, 0.7]],
         ]
         fracs = np.array(fracs)
         fracs[:, 0] *= XMAX
@@ -149,12 +159,6 @@ class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
         self._fractures = [
             pp.PlaneFracture(frac, check_convexity=True) for frac in fracs
         ]
-
-    def ic_values_temperature(self, sd: pp.Grid) -> np.ndarray:
-        return np.ones(sd.num_cells) * self.reference_variable_values.temperature
-
-    def ic_values_pressure(self, sd: pp.Grid) -> np.ndarray:
-        return np.ones(sd.num_cells) * self.reference_variable_values.pressure
 
 
 def solid_params(biot):
@@ -166,7 +170,7 @@ def solid_params(biot):
         shear_modulus=1.2e10,  # [Pa]
         lame_lambda=1.2e10,  # [Pa]
         dilation_angle=5 * np.pi / 180,  # [rad]
-        normal_permeability=1e-6,
+        normal_permeability=1e-3,
         # granite
         biot_coefficient=biot,  # [-]
         density=2683.0,  # [kg * m^-3]
@@ -182,8 +186,8 @@ def solid_params(biot):
 newton_max_iters = 20
 params = {
     "meshing_arguments": {
-        "cell_size": (0.1 * XMAX),
-        "cell_size_boundary": (0.25 * XMAX),
+        "cell_size": (0.05 * XMAX),
+        "cell_size_boundary": (0.1 * XMAX),
     },
     "folder_name": "vis_4_thm",
     "grid_type": "simplex",
@@ -204,7 +208,7 @@ params = {
     },
     "reference_variable_values": pp.ReferenceVariableValues(
         pressure=3.5e7,  # [Pa]
-        temperature=273 + 120,
+        temperature=273 + 20,
     ),
     "units": pp.Units(kg=1e10),
     "time_manager": pp.TimeManager(
@@ -219,6 +223,9 @@ params = {
     "nl_convergence_tol_res": 1e-8,
     "progressbars": True,
     "prepare_simulation": False,
+    "setup": {
+        "solver": "CPR",
+    },
 }
 model = ModelTHM(params)
 model.prepare_simulation()
@@ -243,9 +250,10 @@ def initialize(model: pp.PorePyModel):
 def run(model: pp.PorePyModel):
     model._biot.set_value(float(model.solid.biot_coefficient))
     model._source_rate.set_value(model.units.convert_units(1e-1, "m^3 * s^-1"))
+    dt = 0.01 * pp.DAY
     tm = pp.TimeManager(
-        dt_init=1 * DAY,
-        schedule=[0, 20 * 365 * DAY],
+        dt_init=dt,
+        schedule=[0, 10000 * pp.DAY],
         iter_max=newton_max_iters,
         constant_dt=False,
         recomp_max=1,
