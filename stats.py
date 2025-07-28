@@ -82,15 +82,15 @@ class StatisticsSavingMixin(ContactIndicators):
     def statistics(self) -> list[TimeStepStats]:
         return []
 
-    def simulation_name(self) -> str:
-        name = "stats"
-        setup = self.params["setup"]
-        name = f'{name}_geo{setup["geometry"]}x{setup["grid_refinement"]}'
-        name = f'{name}_sol{setup["solver"]}'
-        name = f'{name}_ph{setup["physics"]}'
-        name = f'{name}_bb{setup["barton_bandis_stiffness_type"]}'
-        name = f'{name}_fr{setup["friction_type"]}'
-        return name
+    # def simulation_name(self) -> str:
+    #     name = "stats"
+    #     setup = self.params["setup"]
+    #     name = f'{name}_geo{setup["geometry"]}x{setup["grid_refinement"]}'
+    #     name = f'{name}_sol{setup["solver"]}'
+    #     name = f'{name}_ph{setup["physics"]}'
+    #     name = f'{name}_bb{setup["barton_bandis_stiffness_type"]}'
+    #     name = f'{name}_fr{setup["friction_type"]}'
+    #     return name
 
     def before_nonlinear_loop(self) -> None:
         self._time_step_stats = TimeStepStats()

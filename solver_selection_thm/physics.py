@@ -1,18 +1,25 @@
 import porepy as pp
 import numpy as np
-from matplotlib import pyplot as plt
-from porepy.models.constitutive_laws import GravityForce, CubicLawPermeability
-
-from stats import StatisticsSavingMixin
-from thermal.thm_solver import THMSolver
+from porepy.models.constitutive_laws import CubicLawPermeability
 
 XMAX = 2000
 YMAX = 1000
 ZMAX = 1000
-DAY = float(24 * 60 * 60)
 
 
-class ModelTHM(THMSolver, CubicLawPermeability, pp.Thermoporomechanics):
+def simulation_name(params: dict) -> str:
+    name = "solver_selection"
+    try:
+        xinj, yinj, zinj = params["inlet_placement"]
+        xprod, yprod, zprod = params["outlet_placement"]
+    except KeyError:
+        pass
+    else:
+        name = f"{name}_{xinj=}_{yinj=}_{zinj=}_{xprod=}_{yprod=}_{zprod=}"
+    return name
+
+
+class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
     def ic_values_temperature(self, sd: pp.Grid) -> np.ndarray:
         return np.ones(sd.num_cells) * self.units.convert_units(273 + 120, "K")
 
@@ -20,7 +27,7 @@ class ModelTHM(THMSolver, CubicLawPermeability, pp.Thermoporomechanics):
         return np.ones(sd.num_cells) * self.reference_variable_values.pressure
 
     def simulation_name(self) -> str:
-        return "solver_selection"
+        return self.params["folder_name"]
 
     def biot_coefficient(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         try:
@@ -65,6 +72,20 @@ class ModelTHM(THMSolver, CubicLawPermeability, pp.Thermoporomechanics):
         bc_values[0, sides.east] = -val * cell_volumes[sides.east] * 0.8
         return bc_values.ravel("F")
 
+    def locate_inlet(self, subdomains):
+        try:
+            xwell, ywell, zwell = self.params["inlet_placement"]
+        except KeyError:
+            xwell, ywell, zwell = 0.3, 0.5, 0.5
+        return self.locate_well(subdomains, xwell=xwell, ywell=ywell, zwell=zwell)
+
+    def locate_outlet(self, subdomains):
+        try:
+            xwell, ywell, zwell = self.params["outlet_placement"]
+        except KeyError:
+            xwell, ywell, zwell = 0.7, 0.5, 0.5
+        return self.locate_well(subdomains, xwell=xwell, ywell=ywell, zwell=zwell)
+
     def locate_well(self, subdomains, xwell, ywell, zwell):
         xmax = self._domain.bounding_box["xmax"]
         ymax = self._domain.bounding_box["ymax"]
@@ -98,11 +119,11 @@ class ModelTHM(THMSolver, CubicLawPermeability, pp.Thermoporomechanics):
     def fluid_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         rate = self.fluid_source_rate()
 
-        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5, zwell=0.5)
+        inj_loc = self.locate_inlet(subdomains)
         inj_density = self.fluid.reference_component.density
 
         prod_density = self.fluid.density(subdomains)
-        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5, zwell=0.5)
+        prod_loc = self.locate_outlet(subdomains)
 
         return (
             super().fluid_source(subdomains)
@@ -116,11 +137,11 @@ class ModelTHM(THMSolver, CubicLawPermeability, pp.Thermoporomechanics):
         rate = self.fluid_source_rate()
 
         inj_density = self.fluid.reference_component.density
-        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5, zwell=0.5)
+        inj_loc = self.locate_inlet(subdomains)
         t_inj = self.units.convert_units(273 + 40, "K")
 
         prod_density = self.fluid.density(subdomains)
-        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5, zwell=0.5)
+        prod_loc = self.locate_outlet(subdomains)
         t_prod = self.temperature(subdomains)
 
         return (
@@ -183,9 +204,45 @@ def solid_params(biot):
     )
 
 
+def initialize(model: pp.PorePyModel, params):
+    model._biot.set_value(0.0)
+    model._source_rate.set_value(0.0)
+    tm = pp.TimeManager(
+        dt_init=1 * pp.DAY,
+        schedule=[0, 2 * pp.DAY],
+        iter_max=newton_max_iters,
+        constant_dt=False,
+        dt_min_max=[0.0005 * pp.DAY, 1.5 * pp.DAY],
+        recomp_max=10,
+    )
+    # why material constants????????????????????????????????
+    # model.params["material_constants"]["time_manager"] = tm
+    model.time_manager = tm
+    pp.run_time_dependent_model(model, params)
+
+
+def run(model: pp.PorePyModel, params):
+    model._biot.set_value(float(model.solid.biot_coefficient))
+    model._source_rate.set_value(model.units.convert_units(1e-1, "m^3 * s^-1"))
+    dt = 0.01 * pp.DAY
+    tm = pp.TimeManager(
+        dt_init=dt,
+        schedule=[0, 10000 * pp.DAY],
+        # schedule=[0, 2 * dt],
+        iter_max=newton_max_iters,
+        constant_dt=False,
+        recomp_max=10,
+        dt_min_max=[0.001 * pp.DAY, 1000 * pp.DAY],
+    )
+    # model.params["material_constants"]["time_manager"] = tm
+    model.time_manager = tm
+    pp.run_time_dependent_model(model, params)
+
+
 newton_max_iters = 20
 params = {
     "meshing_arguments": {
+        # "cell_size": 0.3 * XMAX,
         "cell_size": (0.05 * XMAX),
         "cell_size_boundary": (0.1 * XMAX),
     },
@@ -212,8 +269,8 @@ params = {
     ),
     "units": pp.Units(kg=1e10),
     "time_manager": pp.TimeManager(
-        dt_init=0.001 * DAY,
-        schedule=[0, 10 * DAY],
+        dt_init=0.001 * pp.DAY,
+        schedule=[0, 10 * pp.DAY],
         iter_max=newton_max_iters,
         constant_dt=False,
         recomp_max=1,
@@ -221,49 +278,39 @@ params = {
     "max_iterations": newton_max_iters,
     "nl_convergence_tol": 1e-5,
     "nl_convergence_tol_res": 1e-8,
-    "progressbars": True,
+    "progressbars": False,
     "prepare_simulation": False,
     "setup": {
         "solver": "CPR",
     },
 }
-model = ModelTHM(params)
-model.prepare_simulation()
 
+inlet_placements = [
+    (0.3, 0.5, 0.5),
+    (0, 0.5, 0.5),
+    (0.3, 0, 0.5),
+    (0.3, 1, 0.5),
+    (0.48, 0.5, 0.5),
+]
 
-def initialize(model: pp.PorePyModel):
-    model._biot.set_value(0.0)
-    model._source_rate.set_value(0.0)
-    tm = pp.TimeManager(
-        dt_init=1 * DAY,
-        schedule=[0, 2 * DAY],
-        iter_max=newton_max_iters,
-        constant_dt=False,
-        dt_min_max=[0.5 * DAY, 1.5 * DAY],
-        recomp_max=1,
-    )
-    model.params["material_constants"]["time_manager"] = tm
-    model.time_manager = tm
-    pp.run_time_dependent_model(model, params)
+outlet_placements = [
+    (0.7, 0.5, 0.5),
+    (1, 0.5, 0.5),
+    (0.7, 0, 0.5),
+    (0.7, 1, 0.5),
+    (0.52, 0.5, 0.5),
+]
 
+if __name__ == "__main__":
+    for inlet_placement in inlet_placements:
+        for outlet_placement in outlet_placements:
+            params["inlet_placement"] = inlet_placement
+            params["outlet_placement"] = outlet_placement
+            params["folder_name"] = simulation_name(params)
+            model = ModelTHM(params)
+            model.prepare_simulation()
 
-def run(model: pp.PorePyModel):
-    model._biot.set_value(float(model.solid.biot_coefficient))
-    model._source_rate.set_value(model.units.convert_units(1e-1, "m^3 * s^-1"))
-    dt = 0.01 * pp.DAY
-    tm = pp.TimeManager(
-        dt_init=dt,
-        schedule=[0, 10000 * pp.DAY],
-        iter_max=newton_max_iters,
-        constant_dt=False,
-        recomp_max=1,
-    )
-    model.params["material_constants"]["time_manager"] = tm
-    model.time_manager = tm
-    pp.run_time_dependent_model(model, params)
-
-
-print("Initialising")
-initialize(model)
-print("Running")
-run(model)
+            print("Initialising")
+            initialize(model, params)
+            print("Running")
+            run(model, params)

@@ -97,6 +97,10 @@ class IterativeLinearSolver(pp.PorePyModel):
         self.bmat = bmat
 
     def solve_linear_system(self) -> np.ndarray:
+        # Erasing the values from the previous call
+        self._solve_time = -1
+        self._construction_time = -1
+
         # Check that rhs is finite.
         mat, rhs = self.linear_system
         if not np.all(np.isfinite(rhs)):

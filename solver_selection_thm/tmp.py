@@ -1,13 +1,13 @@
 import porepy as pp
 import numpy as np
 
-XMAX = 1000
+XMAX = 2000
 YMAX = 1000
 
 
 class MyModel(pp.MassAndEnergyBalance):
     def ic_values_temperature(self, sd: pp.Grid) -> np.ndarray:
-        return np.ones(sd.num_cells) * self.reference_variable_values.temperature
+        return np.ones(sd.num_cells) * self.units.convert_units(273 + 120, "K")
 
     def ic_values_pressure(self, sd: pp.Grid) -> np.ndarray:
         return np.ones(sd.num_cells) * self.reference_variable_values.pressure
@@ -23,7 +23,7 @@ class MyModel(pp.MassAndEnergyBalance):
 
     def bc_type_fourier_flux(self, sd: pp.Grid) -> pp.BoundaryCondition:
         domain_sides = self.domain_boundary_sides(sd)
-        return pp.BoundaryCondition(sd, domain_sides.all_bf, "dir")
+        return pp.BoundaryCondition(sd, domain_sides.all_bf, "neu")
 
     def set_domain(self):
         self._domain = pp.Domain(
@@ -48,43 +48,57 @@ class MyModel(pp.MassAndEnergyBalance):
         return src_loc
 
     def fluid_source_rate(self):
-        return self.units.convert_units(1e-1, "m^3 * s^-1")
+        return self.units.convert_units(1e-2, "m^3 * s^-1")
 
     def fluid_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-        inj_loc = self.locate_well(subdomains, xwell=0.5, ywell=0.5)
         rate = self.fluid_source_rate()
+
+        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5)
         inj_density = self.fluid.reference_component.density
+
+        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5)
+        prod_density = self.fluid.density(subdomains)
         return (
             super().fluid_source(subdomains)
             + pp.ad.DenseArray(inj_loc * inj_density) * rate
+            - pp.ad.DenseArray(prod_loc) * prod_density * rate
         )
 
-    # def energy_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
-    #     inj_density = self.fluid.reference_component.density
-    #     inj_loc = self.locate_well(subdomains, xwell=0.5, ywell=0.5)
-    #     cv = self.fluid.components[0].specific_heat_capacity
-    #     t_inj = self.units.convert_units(273 + 40, "K")
-    #     t_ref = self.reference_variable_values.temperature
-    #     rate = self.fluid_source_rate()
-    #     inj = pp.ad.DenseArray(inj_loc * cv * (t_inj - t_ref) * inj_density * rate)
-    #     return super().energy_source(subdomains) + (inj) * rate
+    def energy_source(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
+        rate = self.fluid_source_rate()
+        cv = self.fluid.components[0].specific_heat_capacity
+        t_ref = self.reference_variable_values.temperature
+
+        inj_density = self.fluid.reference_component.density
+        inj_loc = self.locate_well(subdomains, xwell=0.3, ywell=0.5)
+        t_inj = self.units.convert_units(273 + 100, "K")
+
+        prod_density = self.fluid.density(subdomains)
+        prod_loc = self.locate_well(subdomains, xwell=0.7, ywell=0.5)
+        prod_t = self.temperature(subdomains)
+
+        return (
+            super().energy_source(subdomains)
+            + pp.ad.DenseArray(inj_loc * cv * (t_inj - t_ref) * inj_density * rate)
+            - pp.ad.DenseArray(prod_loc * cv) * (prod_t - t_ref) * prod_density * rate
+        )
 
 
-DAY = 24 * 60 * 60
+dt = pp.DAY * 100
 newton_max_iters = 20
 params = {
     "meshing_arguments": {
-        "cell_size": 0.1 * XMAX,
+        "cell_size": 1 / 7 * YMAX,
     },
     "time_manager": pp.TimeManager(
-        schedule=[0, 100 * DAY],
-        dt_init=1 * DAY,
+        schedule=[0, 10 * dt],
+        dt_init=dt,
         iter_max=newton_max_iters,
     ),
     "progressbars": True,
     "reference_variable_values": pp.ReferenceVariableValues(
         pressure=3.5e7,  # [Pa]
-        temperature=273 + 120,
+        temperature=273 + 20,
     ),
     "material_constants": {
         "solid": pp.SolidConstants(
@@ -119,11 +133,12 @@ params = {
             characteristic_displacement=2e0,  # [m]
         ),
         "max_iterations": newton_max_iters,
-        "nl_convergence_tol": 1e-5,
-        "nl_convergence_tol_res": 1e-8,
     },
+    "nl_convergence_tol": 1e-5,
+    "nl_convergence_tol_res": 1e-8,
 }
 model = MyModel(params=params)
 # model.prepare_simulation()
 pp.run_time_dependent_model(model=model, params=params)
 pp.plot_grid(model.mdg, cell_value="temperature", plot_2d=True)
+pp.plot_grid(model.mdg, cell_value="pressure", plot_2d=True)

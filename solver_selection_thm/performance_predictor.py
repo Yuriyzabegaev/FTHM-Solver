@@ -2,7 +2,9 @@ import numpy as np
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import SGDRegressor
-from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.linear_model import PassiveAggressiveRegressor
 
 
 class OnlineSGDRegressor:
@@ -101,6 +103,63 @@ class PerformancePredictorEpsGreedy:
         self.is_ready_to_predict = len(self.rewards) >= self.num_data_before_ready
         if self.is_ready_to_predict:
             self.regressor.fit(np.array(self.features), np.array(self.rewards))
+
+
+class PerformancePredictorPassiveAgressive:
+    def __init__(self, num_solvers: int) -> None:
+        self.num_solvers: int = num_solvers
+        self.exploration_expectation = 100.0
+
+        self.is_ready_to_predict: bool = False
+        initial_choice_sequence = [i for i in range(self.num_solvers) for _ in range(1)]
+        # initial_choice_sequence = initial_choice_sequence[117:]
+
+        self.num_data_before_ready = len(initial_choice_sequence)
+        self.initial_choice_sequence = iter(initial_choice_sequence)
+
+        self.features: list[np.ndarray] = []
+        self.rewards: list[float] = []
+
+        self.passive_agressive_regressor = PassiveAggressiveRegressor(random_state=42)
+        self.transform_pipeline = make_pipeline(
+            PolynomialFeatures(degree=2, interaction_only=True, include_bias=True),
+            StandardScaler(),
+        )
+        self.full_pipeline = make_pipeline(
+            self.transform_pipeline, self.passive_agressive_regressor
+        )
+
+    def predict(self, features: np.ndarray) -> tuple[int, float]:
+        """Select optimal parameters based on the performance prediction."""
+        sample_prediction = self.full_pipeline.predict(features)
+
+        argmax = int(np.argmax(sample_prediction))
+        expectation = float(sample_prediction[argmax])
+        return argmax, expectation
+
+    def select_solver(self, features: np.ndarray) -> tuple[int, float, bool]:
+        if not self.is_ready_to_predict:
+            try:
+                choice = next(self.initial_choice_sequence)
+                return choice, self.exploration_expectation, False
+            except StopIteration:
+                self.is_ready_to_predict = True
+                self.full_pipeline.fit(
+                    np.array(self.features),
+                    np.array(self.rewards),
+                )
+                # assert False, "You should not be here"
+
+        return *self.predict(features=features), True
+
+    def partial_fit(self, features: np.ndarray, reward: float):
+        self.features.append(features)
+        self.rewards.append(reward)
+        if self.is_ready_to_predict:
+            self.passive_agressive_regressor.partial_fit(
+                self.transform_pipeline.transform(np.array(features).reshape(1, -1)),
+                np.atleast_1d(reward),
+            )
 
 
 # Problems:

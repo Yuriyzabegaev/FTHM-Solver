@@ -42,14 +42,14 @@ from iterative_solver import (
 
 
 class THMSolver(IterativeHMSolver):
-    def simulation_name(self) -> str:
-        name = "stats_thermal"
-        setup = self.params["setup"]
-        name = f"{name}_geo{setup['geometry']}x{setup['grid_refinement']}"
-        name = f"{name}_sol{setup['solver']}"
-        if (bc := setup.get("thermal_diffusion_bc")) not in ("dir", None):
-            name = f"{name}_bc{bc}"
-        return name
+    # def simulation_name(self) -> str:
+    #     name = "stats_thermal"
+    #     setup = self.params["setup"]
+    #     name = f"{name}_geo{setup['geometry']}x{setup['grid_refinement']}"
+    #     name = f"{name}_sol{setup['solver']}"
+    #     if (bc := setup.get("thermal_diffusion_bc")) not in ("dir", None):
+    #         name = f"{name}_bc{bc}"
+    #     return name
 
     CONTACT_GROUP = 0
 

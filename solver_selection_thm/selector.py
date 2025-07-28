@@ -5,6 +5,7 @@ from solver_selection_thm.performance_predictor import (
 )
 from solver_selection_thm.solver_space import SolverSchemeProtocol, SolverSpace
 import numpy as np
+from pickle import dump, load
 
 
 class SolverSelectorHistory:
@@ -14,6 +15,29 @@ class SolverSelectorHistory:
         self.decision_idx: list[int] = []
         self.greedy: list[bool] = []
         self.expectation: list[float] = []
+
+    def save(self, path: str):
+        with open(path, "wb") as f:
+            dump(
+                (
+                    self.features,
+                    self.reward,
+                    self.decision_idx,
+                    self.greedy,
+                    self.expectation,
+                ),
+                f,
+            )
+
+    def load(self, path: str):
+        with open(path, "rb") as f:
+            (
+                self.features,
+                self.reward,
+                self.decision_idx,
+                self.greedy,
+                self.expectation,
+            ) = load(f)
 
 
 class SolverSelector:
@@ -58,7 +82,9 @@ class SolverSelector:
         reward = self.reward_estimator.estimate_reward(
             solve_time=solve_time, construct_time=construct_time, success=success
         )
+        # reward with and wo construct
         self.history.reward.append(reward)
         self.performance_predictor.partial_fit(
             features=self.history.features[-1], reward=reward
         )
+        self.history.save("solver_selection_history.npy")

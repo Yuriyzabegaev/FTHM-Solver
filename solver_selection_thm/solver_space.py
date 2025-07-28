@@ -67,8 +67,11 @@ class DecisionNode:
         return repr
 
     def __repr__(self) -> str:
-        k, v = next(iter(self.solver_space_scheme.items()))
-        return f"DecisionNode({k}, {v})"
+        if isinstance(self.solver_space_scheme, dict):
+            k, v = next(iter(self.solver_space_scheme.items()))
+            return f"DecisionNode({k}, {v})"
+        
+        return f"DecisionNode({self.solver_space_scheme})"
 
     def __str__(self) -> str:
         return self._str()

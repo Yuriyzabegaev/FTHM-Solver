@@ -403,6 +403,7 @@ class PetscKrylovSolver:
         self.petsc_mat = PETSc.Mat().createAIJ(
             size=mat.shape, csr=(mat.indptr, mat.indices, mat.data)
         )
+        self.petsc_mat.setBlockSize(3)
         self.ksp.setOperators(self.petsc_mat)
         self.ksp.setUp()
 
