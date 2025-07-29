@@ -39,6 +39,8 @@ class LinearSolveStats:
     enthalpy_mean: float = -1
     fourier_max: float = -1
     fourier_mean: float = -1
+    # Performance 
+    linear_solve_time: float = -1
     # TO BE REMOVED:
     peclet_max: float = -1
     peclet_mean: float = -1
@@ -113,7 +115,11 @@ class StatisticsSavingMixin(ContactIndicators):
     def before_nonlinear_iteration(self) -> None:
         self._linear_solve_stats = LinearSolveStats()
         super().before_nonlinear_iteration()
-        self.collect_stats_sticking_sliding_open()
+        try:
+            # Model can be fracture-less
+            self.collect_stats_sticking_sliding_open()
+        except:
+            pass
         # self.collect_stats_ut_mismatch()
         # self.collect_stats_coulomb_mismatch()
         # self.collect_stats_u_lambda_max()

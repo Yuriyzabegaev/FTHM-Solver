@@ -215,8 +215,6 @@ def initialize(model: pp.PorePyModel, params):
         dt_min_max=[0.0005 * pp.DAY, 1.5 * pp.DAY],
         recomp_max=10,
     )
-    # why material constants????????????????????????????????
-    # model.params["material_constants"]["time_manager"] = tm
     model.time_manager = tm
     pp.run_time_dependent_model(model, params)
 
@@ -234,7 +232,6 @@ def run(model: pp.PorePyModel, params):
         recomp_max=10,
         dt_min_max=[0.001 * pp.DAY, 1000 * pp.DAY],
     )
-    # model.params["material_constants"]["time_manager"] = tm
     model.time_manager = tm
     pp.run_time_dependent_model(model, params)
 

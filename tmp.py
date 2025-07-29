@@ -9,7 +9,7 @@ from solver_selection_thm.performance_predictor import (
 from solver_selection_thm.solver_space import SolverSpace
 from solver_selection_thm.pp_binding import (
     KNOWN_SOLVER_COMPONENTS_THM,
-    SolverSelectionMixinTHM,
+    SolverSelectionMixinTH,
 )
 from solver_selection_thm.test_solver_selector import make_solver_space_scheme_fthm
 

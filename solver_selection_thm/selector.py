@@ -87,4 +87,4 @@ class SolverSelector:
         self.performance_predictor.partial_fit(
             features=self.history.features[-1], reward=reward
         )
-        self.history.save("solver_selection_history.npy")
+        # self.history.save("solver_selection_history.npy")

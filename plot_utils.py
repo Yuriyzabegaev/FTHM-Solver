@@ -338,6 +338,14 @@ def get_gmres_iterations(x: Sequence[TimeStepStats]) -> list[float]:
     return result
 
 
+def get_linear_solve_time(x: Sequence[TimeStepStats]) -> list[float]:
+    result = []
+    for ts in x:
+        for ls in ts.linear_solves:
+            result.append(ls.linear_solve_time)
+    return result 
+
+
 def get_newton_iterations(x: Sequence[TimeStepStats]) -> list[float]:
     result = []
     for ts in x:

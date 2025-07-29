@@ -112,6 +112,7 @@ class PerformancePredictorPassiveAgressive:
 
         self.is_ready_to_predict: bool = False
         initial_choice_sequence = [i for i in range(self.num_solvers) for _ in range(1)]
+        np.random.shuffle(initial_choice_sequence)
         # initial_choice_sequence = initial_choice_sequence[117:]
 
         self.num_data_before_ready = len(initial_choice_sequence)

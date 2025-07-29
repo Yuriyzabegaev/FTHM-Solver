@@ -13,6 +13,7 @@ from iterative_solver import IterativeLinearSolver
 from mat_utils import csr_to_petsc
 from solver_selection_thm.selector import SolverSelector
 from thermal.thm_solver import THMSolver, make_pt_permutation
+from linear_solver_th import THSolver
 import porepy as pp
 import numpy as np
 
@@ -186,12 +187,13 @@ class SolverSelectionMixin(IterativeLinearSolver):
             porepy_model=self,
             active_solver_idx=solver_idx,
         )
+        print(scheme)
         self._solver_id = solver_idx
         return scheme
 
     def solve_linear_system(self):
         rhs = self.linear_system[1]
-        for num_retries in range(5):
+        for num_retries in range(20):
             if not np.all(np.isfinite(rhs)):
                 break
             try:
@@ -206,6 +208,7 @@ class SolverSelectionMixin(IterativeLinearSolver):
             else:
                 success = self._linear_solve_stats.petsc_converged_reason > 0
             self._linear_solver_success = success
+            self._linear_solve_stats.linear_solve_time = solve_and_construct_time
             self.solver_selector.provide_performance_feedback(
                 solve_time=solve_and_construct_time,
                 construct_time=0,
@@ -214,7 +217,7 @@ class SolverSelectionMixin(IterativeLinearSolver):
             if success:
                 return sol
             else:
-                print("retrying linear solve", num_retries)
+                print("retrying linear solve", num_retries + 1)
 
         self._linear_solve_stats.krylov_iters = 0
         result = np.zeros_like(rhs)
@@ -235,6 +238,75 @@ class SolverSelectionMixinTHM(SolverSelectionMixin, THMSolver):
                 self._linear_solve_stats.fourier_max,
                 self._linear_solve_stats.fourier_mean,
                 self._biot._value,
+            ]
+        )
+
+    @cached_property
+    def __enthalpy(self):
+        return self.enthalpy_flux(self.mdg.subdomains())
+
+    @cached_property
+    def __fourier(self):
+        return self.fourier_flux(self.mdg.subdomains())
+
+    @cached_property
+    def cfl_flux(self):
+        return (
+            self.darcy_flux(self.mdg.subdomains())
+            / self.fluid.reference_component.viscosity
+        )
+
+    def compute_convection_diffusion_transport(self):
+        enthalpy = abs(self.__enthalpy.value(self.equation_system))
+        fourier = abs(self.__fourier.value(self.equation_system))
+        return enthalpy.max(), enthalpy.mean(), fourier.max(), fourier.mean()
+
+    def compute_cfl(self):
+        flux = abs(self.cfl_flux.value(self.equation_system)).max()
+        length = np.concatenate(
+            [sd.cell_volumes for sd in self.mdg.subdomains()]
+        ).mean()
+        time_step = self.time_manager.dt
+        CFL = flux * time_step / length
+        return CFL
+
+    def before_nonlinear_iteration(self):
+        t = self.temperature(self.mdg.subdomains()).value(self.equation_system)
+        tmin, tmax = min(t), max(t)
+        self._linear_solve_stats.temp_min = tmin
+        self._linear_solve_stats.temp_max = tmax
+        print(f"Temperature: {tmin:.2f}, {tmax:.2f}")
+
+        cfl = self.compute_cfl()
+        enthalpy_max, enthalpy_mean, fourier_max, fourier_mean = (
+            self.compute_convection_diffusion_transport()
+        )
+        print(f"Peclet: {enthalpy_max / fourier_max:.1e}, CFL: {cfl:.1e}")
+        self._linear_solve_stats.cfl = cfl
+        self._linear_solve_stats.enthalpy_max = enthalpy_max
+        self._linear_solve_stats.enthalpy_mean = enthalpy_mean
+        self._linear_solve_stats.fourier_max = fourier_max
+        self._linear_solve_stats.fourier_mean = fourier_mean
+        if len(self.nonlinear_solver_statistics.nonlinear_increment_norms) != 0:
+            incr_norm = self.nonlinear_solver_statistics.nonlinear_increment_norms[-1]
+            res_norm = self.nonlinear_solver_statistics.residual_norms[-1]
+            print(f"Increment: {incr_norm:.1e}, residual: {res_norm:.1e}")
+        super().before_nonlinear_iteration()
+
+
+class SolverSelectionMixinTH(SolverSelectionMixin, THSolver):
+    def collect_characteristics_for_linear_solver_selection(self) -> np.ndarray:
+        return np.array(
+            [
+                self.time_manager.dt,
+                self._linear_solve_stats.temp_min,
+                self._linear_solve_stats.temp_max,
+                self._linear_solve_stats.cfl,
+                self._linear_solve_stats.enthalpy_max,
+                self._linear_solve_stats.enthalpy_mean,
+                self._linear_solve_stats.fourier_max,
+                self._linear_solve_stats.fourier_mean,
+                self._perm_estimate,
             ]
         )
 

@@ -122,7 +122,7 @@ class Geometry(pp.PorePyModel):
 
 class Setup(Geometry, THMSolver, StatisticsSavingMixin, Physics):
     def simulation_name(self):
-        name = super().simulation_name()
+        name = 'tmp'
         if self.params["setup"].get("isothermal", False):
             name = f"{name}_isothermal"
         if (x := self.params["setup"].get("thermal_conductivity_multiplier", 1)) != 1:
@@ -260,16 +260,16 @@ if __name__ == "__main__":
         }
 
         for g in [
-            # 1,
+            1,
             # 2,
             # 5,
-            25,
+            # 25,
             # 33,
             # 40,
         ]:
             for s in [
                 # 'FGMRES',
-                "SAMG",
+                # "SAMG",
                 "CPR",
                 # "SAMG+ILU",
                 # "S4_diag+ILU",
