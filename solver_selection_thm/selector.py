@@ -48,7 +48,7 @@ class SolverSelector:
         performance_predictor: PerformancePredictorEpsGreedy,
     ):
         self.solver_space: SolverSpace = solver_space
-        self.performance_predictor: PerformancePredictorEpsGreedy
+        self.performance_predictor: Performa
         self.performance_predictor = performance_predictor
         self.reward_estimator: RewardEstimator = reward_estimator
         self.history = SolverSelectorHistory()

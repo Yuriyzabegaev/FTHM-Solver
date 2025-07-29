@@ -123,25 +123,18 @@ class PerformancePredictorPassiveAgressive:
 
         # self.passive_agressive_regressor = PassiveAggressiveRegressor(random_state=42)
 
-        # This is the same but with L1 regularization
-        self.passive_agressive_regressor = SGDRegressor(
-            penalty="l1",
+        self.scaler = StandardScaler()
+        self.regressor = SGDRegressor(
+            penalty="l2",
             random_state=42,
-            learning_rate="pa1",
-            loss="epsilon_insensitive",
+            # learning_rate="pa1",  # better without
+            # loss="epsilon_insensitive",
             epsilon=0.1,
-        )
-        self.transform_pipeline = make_pipeline(
-            PolynomialFeatures(degree=2, interaction_only=True, include_bias=False),
-            StandardScaler(),
-        )
-        self.full_pipeline = make_pipeline(
-            self.transform_pipeline, self.passive_agressive_regressor
         )
 
     def predict(self, features: np.ndarray) -> tuple[int, float]:
         """Select optimal parameters based on the performance prediction."""
-        sample_prediction = self.full_pipeline.predict(features)
+        sample_prediction = self.regressor.predict(self.scaler.transform(features))
 
         argmax = int(np.argmax(sample_prediction))
         expectation = float(sample_prediction[argmax])
@@ -154,11 +147,8 @@ class PerformancePredictorPassiveAgressive:
                 return choice, self.exploration_expectation, False
             except StopIteration:
                 self.is_ready_to_predict = True
-                self.full_pipeline.fit(
-                    np.array(self.features),
-                    np.array(self.rewards),
-                )
-                # assert False, "You should not be here"
+                self.scaler.fit(np.array(self.features))
+                self.regressor.fit(np.array(self.features), np.array(self.rewards))
 
         return *self.predict(features=features), True
 
@@ -166,10 +156,14 @@ class PerformancePredictorPassiveAgressive:
         self.features.append(features)
         self.rewards.append(reward)
         if self.is_ready_to_predict:
-            self.passive_agressive_regressor.partial_fit(
-                self.transform_pipeline.transform(np.array(features).reshape(1, -1)),
-                np.atleast_1d(reward),
+            self.scaler.partial_fit(np.array(features).reshape(1, -1))
+            self.regressor.partial_fit(
+                np.array(features).reshape(1, -1), np.atleast_1d(reward)
             )
+            # self.passive_agressive_regressor.partial_fit(
+            #     self.transform_pipeline.transform(np.array(features).reshape(1, -1)),
+            #     np.atleast_1d(reward),
+            # )
 
 
 # Problems:

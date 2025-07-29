@@ -211,8 +211,8 @@ def run(model: pp.PorePyModel, params):
     dt = 0.01 * pp.DAY
     tm = pp.TimeManager(
         dt_init=dt,
-        # schedule=[0, 10000 * pp.DAY],
-        schedule=[0, 2 * dt],
+        schedule=[0, 10000 * pp.DAY],
+        # schedule=[0, 2 * dt],
         iter_max=newton_max_iters,
         constant_dt=False,
         recomp_max=10,
