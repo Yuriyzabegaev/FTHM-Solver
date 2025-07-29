@@ -192,7 +192,9 @@ class SolverSelectionMixin(IterativeLinearSolver):
         return scheme
 
     def solve_linear_system(self):
-        rhs = self.linear_system[1]
+        J, rhs = self.linear_system
+        best_solution = np.full(self.equation_system.num_dofs(), np.nan)
+        best_res_norm = np.inf
         for num_retries in range(20):
             if not np.all(np.isfinite(rhs)):
                 break
@@ -218,11 +220,12 @@ class SolverSelectionMixin(IterativeLinearSolver):
                 return sol
             else:
                 print("retrying linear solve", num_retries + 1)
+                res_norm = np.linalg.norm(J @ sol - rhs)
+                if res_norm < best_res_norm:
+                    best_res_norm = res_norm
+                    best_solution = sol
 
-        self._linear_solve_stats.krylov_iters = 0
-        result = np.zeros_like(rhs)
-        result[:] = np.nan
-        return result
+        return sol
 
 
 class SolverSelectionMixinTHM(SolverSelectionMixin, THMSolver):

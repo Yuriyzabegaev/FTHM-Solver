@@ -121,9 +121,18 @@ class PerformancePredictorPassiveAgressive:
         self.features: list[np.ndarray] = []
         self.rewards: list[float] = []
 
-        self.passive_agressive_regressor = PassiveAggressiveRegressor(random_state=42)
+        # self.passive_agressive_regressor = PassiveAggressiveRegressor(random_state=42)
+
+        # This is the same but with L1 regularization
+        self.passive_agressive_regressor = SGDRegressor(
+            penalty="l1",
+            random_state=42,
+            learning_rate="pa1",
+            loss="epsilon_insensitive",
+            epsilon=0.1,
+        )
         self.transform_pipeline = make_pipeline(
-            PolynomialFeatures(degree=2, interaction_only=True, include_bias=True),
+            PolynomialFeatures(degree=2, interaction_only=True, include_bias=False),
             StandardScaler(),
         )
         self.full_pipeline = make_pipeline(

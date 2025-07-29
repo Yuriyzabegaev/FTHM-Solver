@@ -163,26 +163,29 @@ def make_solver_space_scheme_hm(nd: int):
 
 
 if __name__ == "__main__":
-    solver_space = SolverSpace(
-        solver_space_scheme=make_solver_space_scheme_hm(nd=3),
-        solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
-    )
-    num_solvers = solver_space.all_decisions_encoding.shape[0]
-    performance_predictor = PerformancePredictorPassiveAgressive(
-        num_solvers=num_solvers,
-    )
-    solver_selector = SolverSelector(
-        reward_estimator=RewardEstimator(),
-        solver_space=solver_space,
-        performance_predictor=performance_predictor,
-    )
-    print(solver_space.decision_tree)
-
-    params["setup"]["linear_solver_selector"] = solver_selector
-
     np.random.seed(42)
 
     for run_idx in range(5):
+        print("Starting run", run_idx)
+
+        solver_space = SolverSpace(
+            solver_space_scheme=make_solver_space_scheme_hm(nd=3),
+            solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
+        )
+        num_solvers = solver_space.all_decisions_encoding.shape[0]
+        print(solver_space.decision_tree)
+        print("Num solvers:", num_solvers)
+
+        performance_predictor = PerformancePredictorPassiveAgressive(
+            num_solvers=num_solvers,
+        )
+        solver_selector = SolverSelector(
+            reward_estimator=RewardEstimator(),
+            solver_space=solver_space,
+            performance_predictor=performance_predictor,
+        )
+        params["setup"]["linear_solver_selector"] = solver_selector
+
         np.random.shuffle(Z_SLICES)
         np.random.shuffle(X_SLICES)
 
@@ -190,7 +193,7 @@ if __name__ == "__main__":
             for x_slice in X_SLICES:
                 params["x_slice"] = x_slice
                 params["z_slice"] = z_slice
-                sim_name = f'run_{run_idx}_{simulation_name(params)}'
+                sim_name = f"run_{run_idx}_{simulation_name(params)}"
                 params["folder_name"] = sim_name
                 model = ModelTHMWithSelector(params)
                 print(model.simulation_name())
