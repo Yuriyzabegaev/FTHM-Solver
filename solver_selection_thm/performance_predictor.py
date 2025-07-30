@@ -175,7 +175,6 @@ from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 
 
 class SuccessClassifier(ClassifierMixin, BaseEstimator):
-   
 
     def __init__(self):
         self.classes_ = np.array([False, True])

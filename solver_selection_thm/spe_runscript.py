@@ -57,13 +57,13 @@ def make_solver_space_scheme_hm(nd: int):
         },
         "elim_options": CategoricalChoices(
             [
-                # {
-                #     "python_pc_type": "ilu",
-                #     "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
-                # },
-                # {
-                #     "python_pc_type": "sor",
-                # },
+                {
+                    "python_pc_type": "ilu",
+                    "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
+                },
+                {
+                    "python_pc_type": "sor",
+                },
                 {
                     "python_pc_type": "pbjacobi",
                 },
@@ -88,9 +88,9 @@ def make_solver_space_scheme_hm(nd: int):
                     "python_pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
                             "symmetric-SOR/Jacobi",
-                            # "l1scaled-Jacobi",
-                            # "SOR/Jacobi",
-                            # "Jacobi",
+                            "l1scaled-Jacobi",
+                            "SOR/Jacobi",
+                            "Jacobi",
                         ]
                     ),
                 },
@@ -172,7 +172,7 @@ def make_solver_space_scheme_hm(nd: int):
             "block_type": CategoricalChoices(
                 [
                     SYSTEM_AMG_OR_ILU,
-                    # CPR,
+                    CPR,
                 ]
             ),
         },
@@ -182,7 +182,7 @@ def make_solver_space_scheme_hm(nd: int):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    for run_idx in range(1, 5):
+    for run_idx in range(2, 5):
         print("Starting run", run_idx)
 
         solver_space = SolverSpace(
