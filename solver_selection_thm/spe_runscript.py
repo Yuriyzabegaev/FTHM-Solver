@@ -15,6 +15,7 @@ from solver_selection_thm.performance_predictor import (
     PerformancePredictorPassiveAgressive,
     PerformancePredictorEpsGreedy,
     RewardEstimator,
+    Estimator,
 )
 from solver_selection_thm.solver_space import SolverSpace
 from solver_selection_thm.pp_binding import (
@@ -56,13 +57,13 @@ def make_solver_space_scheme_hm(nd: int):
         },
         "elim_options": CategoricalChoices(
             [
-                {
-                    "python_pc_type": "ilu",
-                    "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
-                },
-                {
-                    "python_pc_type": "sor",
-                },
+                # {
+                #     "python_pc_type": "ilu",
+                #     "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
+                # },
+                # {
+                #     "python_pc_type": "sor",
+                # },
                 {
                     "python_pc_type": "pbjacobi",
                 },
@@ -70,16 +71,26 @@ def make_solver_space_scheme_hm(nd: int):
                     "python_pc_type": "hypre",
                     "python_pc_hypre_type": "boomeramg",
                     "python_pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                        [0.5, 0.7, 0.9]
+                        [
+                            0.5,
+                            0.7,
+                            0.9,
+                        ]
                     ),
                     "python_pc_hypre_boomeramg_P_max": 16,
-                    "python_pc_hypre_boomeramg_agg_nl": NumericalChoices([0, 1, 2]),
+                    "python_pc_hypre_boomeramg_agg_nl": NumericalChoices(
+                        [
+                            0,
+                            1,
+                            2,
+                        ]
+                    ),
                     "python_pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
                             "symmetric-SOR/Jacobi",
-                            "l1scaled-Jacobi",
-                            "SOR/Jacobi",
-                            "Jacobi",
+                            # "l1scaled-Jacobi",
+                            # "SOR/Jacobi",
+                            # "Jacobi",
                         ]
                     ),
                 },
@@ -148,14 +159,20 @@ def make_solver_space_scheme_hm(nd: int):
         "petsc_options": {
             "ksp_monitor": None,
             "ksp_rtol": 1e-12,
-            "ksp_gmres_restart": NumericalChoices([10, 30, 50]),
+            "ksp_gmres_restart": NumericalChoices(
+                [
+                    10,
+                    30,
+                    50,
+                ]
+            ),
         },
         "compute_eigenvalues": False,
         "preconditioner": {
             "block_type": CategoricalChoices(
                 [
                     SYSTEM_AMG_OR_ILU,
-                    CPR,
+                    # CPR,
                 ]
             ),
         },
@@ -165,7 +182,7 @@ def make_solver_space_scheme_hm(nd: int):
 if __name__ == "__main__":
     np.random.seed(42)
 
-    for run_idx in range(5):
+    for run_idx in range(1, 5):
         print("Starting run", run_idx)
 
         solver_space = SolverSpace(
@@ -176,21 +193,25 @@ if __name__ == "__main__":
         print(solver_space.decision_tree)
         print("Num solvers:", num_solvers)
 
-        performance_predictor = PerformancePredictorPassiveAgressive(
+        performance_predictor = Estimator(
             num_solvers=num_solvers,
         )
         solver_selector = SolverSelector(
-            reward_estimator=RewardEstimator(),
             solver_space=solver_space,
             performance_predictor=performance_predictor,
         )
         params["setup"]["linear_solver_selector"] = solver_selector
 
+        np.random.seed(42)
         np.random.shuffle(Z_SLICES)
         np.random.shuffle(X_SLICES)
 
+        i = 0
         for z_slice in Z_SLICES:
             for x_slice in X_SLICES:
+                i += 1
+                if i <= 2:
+                    continue
                 params["x_slice"] = x_slice
                 params["z_slice"] = z_slice
                 sim_name = f"run_{run_idx}_{simulation_name(params)}"

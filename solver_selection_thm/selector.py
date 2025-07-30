@@ -43,14 +43,14 @@ class SolverSelectorHistory:
 class SolverSelector:
     def __init__(
         self,
-        reward_estimator: RewardEstimator,
+        # reward_estimator: RewardEstimator,
         solver_space: SolverSpace,
         performance_predictor: PerformancePredictorEpsGreedy,
     ):
         self.solver_space: SolverSpace = solver_space
-        self.performance_predictor: Performa
+        self.performance_predictor: PerformancePredictorEpsGreedy
         self.performance_predictor = performance_predictor
-        self.reward_estimator: RewardEstimator = reward_estimator
+        # self.reward_estimator: RewardEstimator = reward_estimator
         self.history = SolverSelectorHistory()
 
     def select_linear_solver_scheme(
@@ -66,10 +66,10 @@ class SolverSelector:
         )
         decision = self.solver_space.all_decisions_encoding[decision_idx]
 
-        self.history.decision_idx.append(decision_idx)
-        self.history.expectation.append(expectation)
-        self.history.greedy.append(greedy)
-        self.history.features.append(features[decision_idx])
+        self.__decision_idx = decision_idx
+        self.__expectation = expectation
+        self.__greedy = greedy
+        self.__features = features[decision_idx].copy()
 
         config = self.solver_space.config_from_decision(decision=decision)
         return self.solver_space.build_solver_scheme(
@@ -79,12 +79,16 @@ class SolverSelector:
     def provide_performance_feedback(
         self, solve_time: float, construct_time: float, success: bool
     ) -> None:
-        reward = self.reward_estimator.estimate_reward(
+        reward = self.performance_predictor.reward_maker.estimate_reward(
             solve_time=solve_time, construct_time=construct_time, success=success
         )
         # reward with and wo construct
+        self.history.decision_idx.append(self.__decision_idx)
+        self.history.expectation.append(self.__expectation)
+        self.history.greedy.append(self.__greedy)
+        self.history.features.append(self.__features)
         self.history.reward.append(reward)
         self.performance_predictor.partial_fit(
-            features=self.history.features[-1], reward=reward
+            features=self.history.features[-1], solve_time=solve_time, construct_time=construct_time, success=success
         )
         # self.history.save("solver_selection_history.npy")
