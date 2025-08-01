@@ -5,4 +5,5 @@
 *.geo_unrolled
 *.npz
 *.npy
+*.pkl
 figures/

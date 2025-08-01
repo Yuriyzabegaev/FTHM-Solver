@@ -332,3 +332,71 @@ class SolverSpace:
             build_inner_solver_scheme=self.build_solver_scheme,
             porepy_model=porepy_model,
         )
+
+
+def explain_decision(solver_space: SolverSpace, decision_idx: int) -> str:
+    id_ = -1
+    if decision_idx < len(solver_space.category_choices_map):
+        is_categorical = True
+        for id_, idx in solver_space.category_choices_map.items():
+            if idx == decision_idx:
+                id_ = id_
+                break
+    elif decision_idx < (
+        len(solver_space.category_choices_map) + len(solver_space.numerical_choices_map)
+    ):
+        decision_idx -= len(solver_space.category_choices_map)
+        is_categorical = False
+        for id_, idx in solver_space.numerical_choices_map.items():
+            if idx == decision_idx:
+                id_ = id_
+                break
+    else:
+        raise IndexError(f"{decision_idx} is out of bounds.")
+    assert id_ != -1, "This should never happen"
+
+    def get_node_name(node: DecisionNode):
+        if isinstance(node.solver_space_scheme, dict):
+            if "block_type" in node.solver_space_scheme:
+                return node.solver_space_scheme["block_type"]
+            else:
+                return next(iter(node.solver_space_scheme.values()))
+        else:
+            return str(node.solver_space_scheme)
+
+    def find_categorical_child(node, prefix: list):
+        for child in node.children:
+            if isinstance(child, DecisionNode):
+                prefix.append(get_node_name(child))
+            if id(child) == id_:
+                return True
+            if find_categorical_child(child, prefix):
+                return True
+            if isinstance(child, DecisionNode):
+                prefix.pop()
+
+        return False
+
+    def find_numerical_child(node, prefix: list):
+        if isinstance(node, DecisionNode):
+            prefix.append(get_node_name(node))
+            for num_decision in node.numerical_choices:
+                if id(num_decision) == id_:
+                    prefix.append(num_decision.tag)
+                    return True
+        for child in node.children:
+            if find_numerical_child(child, prefix):
+                return True
+
+        if isinstance(node, DecisionNode):
+            prefix.pop()
+
+        return False
+
+    prefix = []
+    if is_categorical:
+        assert find_categorical_child(solver_space.decision_tree, prefix)
+    else:
+        assert find_numerical_child(solver_space.decision_tree, prefix)
+
+    return "-".join(prefix)

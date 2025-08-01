@@ -195,24 +195,24 @@ class SolverSelectionMixin(IterativeLinearSolver):
         J, rhs = self.linear_system
         best_solution = np.full(self.equation_system.num_dofs(), np.nan)
         best_res_norm = np.inf
+        t1 = time.time()
         for num_retries in range(20):
             if not np.all(np.isfinite(rhs)):
                 break
             try:
                 t0 = time.time()
                 sol = super().solve_linear_system()
-                solve_and_construct_time = time.time() - t0
+                solve_and_construct_time_inner = time.time() - t0
             except Exception:
                 traceback.print_exc()
                 sol = np.full(self.equation_system.num_dofs(), np.nan)
-                solve_and_construct_time = -1
+                solve_and_construct_time_inner = -1
                 success = False
             else:
                 success = self._linear_solve_stats.petsc_converged_reason > 0
             self._linear_solver_success = success
-            self._linear_solve_stats.linear_solve_time = solve_and_construct_time
             self.solver_selector.provide_performance_feedback(
-                solve_time=solve_and_construct_time,
+                solve_time=solve_and_construct_time_inner,
                 construct_time=0,
                 success=success,
             )
@@ -225,7 +225,8 @@ class SolverSelectionMixin(IterativeLinearSolver):
                     best_res_norm = res_norm
                     best_solution = sol
 
-        return sol
+        self._linear_solve_stats.linear_solve_time = time.time() - t1
+        return best_solution
 
 
 class SolverSelectionMixinTHM(SolverSelectionMixin, THMSolver):

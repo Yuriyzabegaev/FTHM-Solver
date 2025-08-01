@@ -109,11 +109,21 @@ def make_solver_space_scheme_hm(nd: int):
                 },
                 "elim_options": {
                     "pc_type": "hypre",
-                    "pc_hypre_type": "boomeramg",
+                    "pc_hypre_type": "boomer    amg",
                     "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                        [0.5, 0.7, 0.9]
+                        [
+                            0.5,
+                            0.7,
+                            0.9,
+                        ]
                     ),
-                    "pc_hypre_boomeramg_agg_nl": NumericalChoices([0, 1, 2]),
+                    "pc_hypre_boomeramg_agg_nl": NumericalChoices(
+                        [
+                            0,
+                            1,
+                            2,
+                        ]
+                    ),
                     "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
                             "symmetric-SOR/Jacobi",
@@ -127,7 +137,13 @@ def make_solver_space_scheme_hm(nd: int):
                     "block_type": "PetscFieldSplitScheme",
                     "groups": temp,
                     "elim_options": {
-                        "pc_type": "none",
+                        "pc_type": CategoricalChoices(
+                            [
+                                "sor",
+                                "jacobi",
+                                "none",
+                            ]
+                        ),
                     },
                 },
             },
@@ -180,13 +196,28 @@ def make_solver_space_scheme_hm(nd: int):
 
 
 if __name__ == "__main__":
+    import pickle
+    NUM_RUNS = 5
     np.random.seed(42)
+    Z_SLICES = np.array(Z_SLICES)
+    X_SLICES = np.array(X_SLICES)
+    permutations_z = [np.random.permutation(len(Z_SLICES)) for i in range(5)]
+    permutations_x = [np.random.permutation(len(X_SLICES)) for i in range(5)]
 
-    for run_idx in range(2, 5):
+    IDX_START = 30
+    solver_space_scheme = make_solver_space_scheme_hm(nd=3)
+
+    for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
         print("Starting run", run_idx)
 
+
+        with open(f"stats/spe_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
+            pickle.dump(solver_space_scheme, f)
+        with open(f"stats/spe_permutations_{run_idx}.pkl", "wb") as f:
+            pickle.dump({'x': permutations_x[run_idx - IDX_START], 'z': permutations_z[run_idx - IDX_START]}, f)
+
         solver_space = SolverSpace(
-            solver_space_scheme=make_solver_space_scheme_hm(nd=3),
+            solver_space_scheme=solver_space_scheme,
             solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
         )
         num_solvers = solver_space.all_decisions_encoding.shape[0]
@@ -202,16 +233,8 @@ if __name__ == "__main__":
         )
         params["setup"]["linear_solver_selector"] = solver_selector
 
-        np.random.seed(42)
-        np.random.shuffle(Z_SLICES)
-        np.random.shuffle(X_SLICES)
-
-        i = 0
-        for z_slice in Z_SLICES:
-            for x_slice in X_SLICES:
-                i += 1
-                if i <= 2:
-                    continue
+        for z_slice in Z_SLICES[permutations_z[run_idx - IDX_START]]:
+            for x_slice in X_SLICES[permutations_x[run_idx - IDX_START]]:
                 params["x_slice"] = x_slice
                 params["z_slice"] = z_slice
                 sim_name = f"run_{run_idx}_{simulation_name(params)}"

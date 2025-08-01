@@ -179,7 +179,7 @@ class SuccessClassifier(ClassifierMixin, BaseEstimator):
     def __init__(self):
         self.classes_ = np.array([False, True])
         self.scaler = StandardScaler()
-        self.classifier = SGDClassifier(loss="log_loss", max_iter=100)
+        self.classifier = SGDClassifier(loss="log_loss", max_iter=100, random_state=42)
 
     def fit(self, X, y):
         classes = np.array([False, True])
@@ -212,15 +212,38 @@ class SuccessClassifier(ClassifierMixin, BaseEstimator):
         return self.classifier.decision_function(self.scaler.transform(X))
 
 
+from sklearn.neural_network import MLPRegressor
+
+
 class RewardRegressor(RegressorMixin, BaseEstimator):
 
     def __init__(self):
         self.scaler = StandardScaler()
+        # self.regressor = MLPRegressor(
+        #     # tuned for MAE online
+        #     hidden_layer_sizes=(8,8,8),
+        #     alpha=1e-05,
+        #     learning_rate_init=0.001,
+        #     random_state=42
+        # )
         self.regressor = SGDRegressor(
-            penalty="l2",
             random_state=42,
-            epsilon=0.1,
+            penalty="l2",
+            alpha=0.001,
+            eta0=0.001,
+            # early_stopping=True,
         )
+        # self.regressor = SGDRegressor(
+        #     random_state=42,
+        #     alpha=0.0001,
+        #     early_stopping=False,
+        #     eta0=0.01,
+        #     learning_rate="adaptive",
+        #     loss="epsilon_insensitive",
+        #     max_iter=1000,
+        #     penalty="elasticnet",
+        #     tol=0.001,
+        # )
 
     def fit(self, X, y):
         X = self.scaler.fit_transform(X)
@@ -319,7 +342,8 @@ class Estimator:
 # Save/load -> ignoring
 # Flag to reuse solver
 # fit
-FAIL_REWARD = -100.
+FAIL_REWARD = -100.0
+
 
 class RewardEstimator:
     def __init__(self):
