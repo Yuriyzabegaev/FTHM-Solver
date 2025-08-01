@@ -179,16 +179,17 @@ class SolverSelectionMixin(IterativeLinearSolver):
     def make_solver_scheme(self):
         characteristics = self.collect_characteristics_for_linear_solver_selection()
         try:
-            solver_idx = getattr(self, "_solver_id")
+            solver_idx = self._solver_idx
         except AttributeError:
             solver_idx = None
-        scheme, solver_idx = self.solver_selector.select_linear_solver_scheme(
+        scheme, new_solver_idx = self.solver_selector.select_linear_solver_scheme(
             characteristics=characteristics,
             porepy_model=self,
             active_solver_idx=solver_idx,
         )
+        self._is_reusing_preconditioner = new_solver_idx == solver_idx
         print(scheme)
-        self._solver_id = solver_idx
+        self._solver_idx = new_solver_idx
         return scheme
 
     def solve_linear_system(self):
@@ -200,20 +201,19 @@ class SolverSelectionMixin(IterativeLinearSolver):
             if not np.all(np.isfinite(rhs)):
                 break
             try:
-                t0 = time.time()
+                # t0 = time.time()
                 sol = super().solve_linear_system()
-                solve_and_construct_time_inner = time.time() - t0
+                # solve_and_construct_time_inner = time.time() - t0
             except Exception:
                 traceback.print_exc()
                 sol = np.full(self.equation_system.num_dofs(), np.nan)
-                solve_and_construct_time_inner = -1
                 success = False
             else:
                 success = self._linear_solve_stats.petsc_converged_reason > 0
             self._linear_solver_success = success
             self.solver_selector.provide_performance_feedback(
-                solve_time=solve_and_construct_time_inner,
-                construct_time=0,
+                solve_time=self._solve_time,
+                construct_time=self._construction_time,
                 success=success,
             )
             if success:

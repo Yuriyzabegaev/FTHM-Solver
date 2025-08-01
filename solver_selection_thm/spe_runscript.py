@@ -109,7 +109,7 @@ def make_solver_space_scheme_hm(nd: int):
                 },
                 "elim_options": {
                     "pc_type": "hypre",
-                    "pc_hypre_type": "boomer    amg",
+                    "pc_hypre_type": "boomeramg",
                     "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
                         [
                             0.5,
