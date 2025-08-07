@@ -217,7 +217,8 @@ class SolverSelectionMixin(IterativeLinearSolver):
                 success=success,
             )
             if success:
-                return sol
+                best_solution = sol
+                break
             else:
                 print("retrying linear solve", num_retries + 1)
                 res_norm = np.linalg.norm(J @ sol - rhs)

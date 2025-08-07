@@ -1,6 +1,6 @@
 from itertools import count
 import traceback
-from solver_selection_thm.physics import (
+from solver_selection_thm.thm_physics import (
     ModelTHM,
     initialize,
     run,
@@ -15,6 +15,7 @@ from solver_selection_thm.performance_predictor import (
     PerformancePredictorPassiveAgressive,
     PerformancePredictorEpsGreedy,
     RewardEstimator,
+    PerformancePredictorRandom,
     Estimator,
 )
 from solver_selection_thm.solver_space import SolverSpace
@@ -49,40 +50,40 @@ def make_solver_space_scheme_fthm(nd: int):
         },
         "elim_options": CategoricalChoices(
             [
-                {
-                    "python_pc_type": "ilu",
-                    "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
-                },
-                {
-                    "python_pc_type": "sor",
-                },
-                {
-                    "python_pc_type": "pbjacobi",
-                },
+                # {
+                #     "python_pc_type": "ilu",
+                #     "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
+                # },
+                # {
+                #     "python_pc_type": "sor",
+                # },
+                # {
+                #     "python_pc_type": "pbjacobi",
+                # },
                 {
                     "python_pc_type": "hypre",
                     "python_pc_hypre_type": "boomeramg",
                     "python_pc_hypre_boomeramg_strong_threshold": NumericalChoices(
                         [
-                            0.5,
-                            0.7,
+                            # 0.5,
+                            # 0.7,
                             0.9,
                         ]
                     ),
                     "python_pc_hypre_boomeramg_P_max": 16,
                     "python_pc_hypre_boomeramg_agg_nl": NumericalChoices(
                         [
-                            0,
-                            1,
+                            # 0,
+                            # 1,
                             2,
                         ]
                     ),
                     "python_pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
                             "symmetric-SOR/Jacobi",
-                            "l1scaled-Jacobi",
-                            "SOR/Jacobi",
-                            "Jacobi",
+                            # "l1scaled-Jacobi",
+                            # "SOR/Jacobi",
+                            # "Jacobi",
                         ]
                     ),
                 },
@@ -104,24 +105,24 @@ def make_solver_space_scheme_fthm(nd: int):
                     "pc_hypre_type": "boomeramg",
                     "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
                         [
-                            0.5,
-                            0.7,
+                            # 0.5,
+                            # 0.7,
                             0.9,
                         ]
                     ),
                     "pc_hypre_boomeramg_agg_nl": NumericalChoices(
                         [
-                            0,
-                            1,
+                            # 0,
+                            # 1,
                             2,
                         ]
                     ),
                     "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
                             "symmetric-SOR/Jacobi",
-                            "l1scaled-Jacobi",
-                            "SOR/Jacobi",
-                            "Jacobi",
+                            # "l1scaled-Jacobi",
+                            # "SOR/Jacobi",
+                            # "Jacobi",
                         ]
                     ),
                 },
@@ -132,8 +133,8 @@ def make_solver_space_scheme_fthm(nd: int):
                         "pc_type": CategoricalChoices(
                             [
                                 "sor",
-                                "jacobi",
-                                "none",
+                                # "jacobi",
+                                # "none",
                             ]
                         ),
                     },
@@ -161,50 +162,6 @@ def make_solver_space_scheme_fthm(nd: int):
             },
         },
     }
-    CPR = (
-        {
-            "block_type": "PetscCompositeScheme",
-            "groups": flow + temp,
-            "solvers": {
-                0: {
-                    "block_type": "PetscFieldSplitScheme",
-                    "groups": flow,
-                    "fieldsplit_options": {
-                        "pc_fieldsplit_type": "additive",
-                    },
-                    "elim_options": {
-                        "pc_type": "hypre",
-                        "pc_hypre_type": "boomeramg",
-                        "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                            # [0.5, 0.6, 0.7, 0.8]
-                            [0.5]
-                        ),
-                    },
-                    "complement": {
-                        "block_type": "PetscFieldSplitScheme",
-                        "groups": temp,
-                        "elim_options": {
-                            "pc_type": "none",
-                        },
-                    },
-                },
-                1: {
-                    "block_type": "PetscFieldSplitScheme",
-                    "groups": flow + temp,
-                    "python_pc": {
-                        "block_type": "PcPythonPermutation",
-                        "permutation_type": "pt_permutation",
-                        "p_groups": flow,
-                        "t_groups": temp,
-                        "block_size": 2,
-                    },
-                    "elim_options": {
-                        "python_pc_type": "ilu",
-                    },
-                },
-            },
-        },
-    )
     return {
         "block_type": "LinearTransformedScheme",
         "scale_energy_balance": True,
@@ -216,7 +173,7 @@ def make_solver_space_scheme_fthm(nd: int):
                 "ksp_rtol": 1e-12,
                 "ksp_gmres_restart": NumericalChoices(
                     [
-                        10,
+                        # 10,
                         30,
                         50,
                     ]
@@ -248,32 +205,46 @@ def make_solver_space_scheme_fthm(nd: int):
                     "complement": {
                         "block_type": "PetscFieldSplitScheme",
                         "groups": mech,
-                        "elim_options": {
-                            "pc_type": "hypre",
-                            "pc_hypre_type": "boomeramg",
-                            "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                                [
-                                    0.5,
-                                    0.7,
-                                    0.9,
-                                ]
-                            ),
-                            "pc_hypre_boomeramg_agg_nl": NumericalChoices(
-                                [
-                                    0,
-                                    1,
-                                    2,
-                                ]
-                            ),
-                            "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
-                                [
-                                    "symmetric-SOR/Jacobi",
-                                    "l1scaled-Jacobi",
-                                    "SOR/Jacobi",
-                                    "Jacobi",
-                                ]
-                            ),
-                        },
+                        "elim_options": CategoricalChoices(
+                            [
+                                {
+                                    "pc_type": "hypre",
+                                    "pc_hypre_type": "boomeramg",
+                                    "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
+                                        [
+                                            0.5,
+                                            0.7,
+                                            0.9,
+                                        ]
+                                    ),
+                                    "pc_hypre_boomeramg_agg_nl": NumericalChoices(
+                                        [
+                                            0,
+                                            1,
+                                            2,
+                                        ]
+                                    ),
+                                    "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
+                                        [
+                                            "symmetric-SOR/Jacobi",
+                                            "l1scaled-Jacobi",
+                                            "SOR/Jacobi",
+                                            "Jacobi",
+                                        ]
+                                    ),
+                                },
+                                {
+                                    "pc_type": "gamg",
+                                    "pc_gamg_threshold": NumericalChoices(
+                                        [-1, 0, 0.2, 0.5, 0.7]
+                                    ),
+                                    "pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                                    "pc_gamg_aggressive_coarsening": NumericalChoices(
+                                        [1, 2]
+                                    ),
+                                },
+                            ]
+                        ),
                         "block_size": nd,
                         "invert": {
                             "block_type": "fs_analytical_slow_new",
@@ -298,6 +269,8 @@ def make_solver_space_scheme_fthm(nd: int):
 
 import numpy as np
 
+RANDOM_SELECTION = False
+
 if __name__ == "__main__":
     import pickle
 
@@ -305,19 +278,24 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     inlet_placements = np.array(inlet_placements)
-    outlet_placement = np.array(outlet_placements)
+    outlet_placements = np.array(outlet_placements)
 
     permutations_inlet = [
         np.random.permutation(len(inlet_placements)) for i in range(NUM_RUNS)
     ]
     permutations_outlet = [
-        np.random.permutation(len(outlet_placement)) for i in range(NUM_RUNS)
+        np.random.permutation(len(outlet_placements)) for i in range(NUM_RUNS)
     ]
 
-    IDX_START = 0
+    IDX_START = 20
     solver_space_scheme = make_solver_space_scheme_fthm(nd=3)
 
+    counter = 0
     for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
+        counter += 1
+        if counter <= 3:
+            continue
+
         print("Starting run", run_idx)
 
         with open(f"stats/thm_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
@@ -339,9 +317,11 @@ if __name__ == "__main__":
         print(solver_space.decision_tree)
         print("Num solvers:", num_solvers)
 
-        performance_predictor = Estimator(
-            num_solvers=num_solvers,
-        )
+        if RANDOM_SELECTION:
+            performance_predictor = PerformancePredictorRandom(num_solvers=num_solvers)
+        else:
+            performance_predictor = Estimator(num_solvers=num_solvers)
+
         solver_selector = SolverSelector(
             solver_space=solver_space,
             performance_predictor=performance_predictor,
@@ -349,11 +329,17 @@ if __name__ == "__main__":
 
         params["setup"]["linear_solver_selector"] = solver_selector
 
-        for inlet_placement in inlet_placements:
-            for outlet_placement in outlet_placements:
+        for inlet_placement in inlet_placements[
+            permutations_inlet[run_idx - IDX_START]
+        ]:
+            for outlet_placement in outlet_placements[
+                permutations_outlet[run_idx - IDX_START]
+            ]:
                 params["inlet_placement"] = inlet_placement
                 params["outlet_placement"] = outlet_placement
                 sim_name = f"run_{run_idx}_{simulation_name(params)}"
+                if RANDOM_SELECTION:
+                    sim_name = f"RANDOM_{sim_name}"
                 params["folder_name"] = sim_name
 
                 try:

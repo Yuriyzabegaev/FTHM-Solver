@@ -257,6 +257,26 @@ class RewardRegressor(RegressorMixin, BaseEstimator):
     def predict(self, X):
         prediction = self.regressor.predict(self.scaler.transform(X))
         return np.clip(prediction, FAIL_REWARD, -FAIL_REWARD)
+    
+
+class PerformancePredictorRandom:
+
+    def __init__(self, num_solvers: int):
+        self.reward_maker = RewardEstimator()
+        self.num_solvers: int = num_solvers
+        self.exploration_expectation = 100.0
+
+    def select_solver(self, features: np.ndarray) -> tuple[int, float, bool]:
+        return np.random.randint(self.num_solvers), self.exploration_expectation, True
+
+    def partial_fit(
+        self,
+        features: np.ndarray,
+        solve_time: float,
+        construct_time: float,
+        success: bool,
+    ):
+        pass
 
 
 class Estimator:

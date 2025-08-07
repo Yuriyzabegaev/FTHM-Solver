@@ -1,4 +1,4 @@
-from solver_selection_thm.physics import ModelTHM, initialize, run, params
+from solver_selection_thm.thm_physics import ModelTHM, initialize, run, params
 from solver_selection_thm.selector import SolverSelector
 from solver_selection_thm.solver_space import CategoricalChoices, NumericalChoices
 from solver_selection_thm.performance_predictor import (
