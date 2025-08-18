@@ -3,7 +3,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.linear_model import SGDRegressor
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler, RobustScaler
 from sklearn.linear_model import PassiveAggressiveRegressor
 
 

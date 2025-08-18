@@ -269,7 +269,7 @@ def make_solver_space_scheme_fthm(nd: int):
 
 import numpy as np
 
-RANDOM_SELECTION = False
+RANDOM_SELECTION = True
 
 if __name__ == "__main__":
     import pickle
@@ -287,13 +287,13 @@ if __name__ == "__main__":
         np.random.permutation(len(outlet_placements)) for i in range(NUM_RUNS)
     ]
 
-    IDX_START = 20
+    IDX_START = 30
     solver_space_scheme = make_solver_space_scheme_fthm(nd=3)
 
     counter = 0
     for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
         counter += 1
-        if counter <= 3:
+        if counter <= 1:
             continue
 
         print("Starting run", run_idx)

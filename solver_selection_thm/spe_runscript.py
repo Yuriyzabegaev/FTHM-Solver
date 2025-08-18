@@ -16,6 +16,7 @@ from solver_selection_thm.performance_predictor import (
     PerformancePredictorEpsGreedy,
     RewardEstimator,
     Estimator,
+    PerformancePredictorRandom
 )
 from solver_selection_thm.solver_space import SolverSpace
 from solver_selection_thm.pp_binding import (
@@ -194,6 +195,8 @@ def make_solver_space_scheme_hm(nd: int):
         },
     }
 
+RANDOM_SELECTION = True
+
 
 if __name__ == "__main__":
     import pickle
@@ -204,7 +207,7 @@ if __name__ == "__main__":
     permutations_z = [np.random.permutation(len(Z_SLICES)) for i in range(5)]
     permutations_x = [np.random.permutation(len(X_SLICES)) for i in range(5)]
 
-    IDX_START = 30
+    IDX_START = 40
     solver_space_scheme = make_solver_space_scheme_hm(nd=3)
 
     for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
@@ -224,9 +227,11 @@ if __name__ == "__main__":
         print(solver_space.decision_tree)
         print("Num solvers:", num_solvers)
 
-        performance_predictor = Estimator(
-            num_solvers=num_solvers,
-        )
+        if RANDOM_SELECTION:
+            performance_predictor = PerformancePredictorRandom(num_solvers=num_solvers)
+        else:
+            performance_predictor = Estimator(num_solvers=num_solvers)
+
         solver_selector = SolverSelector(
             solver_space=solver_space,
             performance_predictor=performance_predictor,
@@ -238,6 +243,8 @@ if __name__ == "__main__":
                 params["x_slice"] = x_slice
                 params["z_slice"] = z_slice
                 sim_name = f"run_{run_idx}_{simulation_name(params)}"
+                if RANDOM_SELECTION:
+                    sim_name = f"RANDOM_{sim_name}"
                 params["folder_name"] = sim_name
                 model = ModelTHMWithSelector(params)
                 print(model.simulation_name())
