@@ -7,6 +7,7 @@ from iterative_solver import (
     get_equations_group_ids,
     get_variables_group_ids,
 )
+import time
 
 import numpy as np
 import scipy.sparse
@@ -263,7 +264,10 @@ class IterativeHMSolver(IterativeLinearSolver):
         solver_type = self.params["setup"]["solver"]
         direct = solver_type == 0
         if direct:
-            return scipy.sparse.linalg.spsolve(*self.linear_system)
+            t0 = time.time()
+            res = scipy.sparse.linalg.spsolve(*self.linear_system)
+            self._linear_solve_stats.linear_solve_time = time.time() - t0
+            return res
         else:
             return super().solve_linear_system()
 

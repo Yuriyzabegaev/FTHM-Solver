@@ -19,6 +19,9 @@ class LinearSolveStats:
     num_sticking: int = -1
     num_sliding: int = -1
     num_open: int = -1
+    # Performance
+    construct_time: float = -1
+    linear_solve_time: float = -1
     # Assumptions
     coulomb_mismatch: float = -1
     sticking_u_mismatch: float = -1
@@ -32,6 +35,8 @@ class LinearSolveStats:
     state_id: str = ""
     iterate_id: str = ""
     # Thermal
+    pressure_min: float = -1
+    pressure_max: float = -1
     temp_min: float = -1
     temp_max: float = -1
     cfl: float = -1

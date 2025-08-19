@@ -128,7 +128,7 @@ class Setup(Geometry, THMSolver, StatisticsSavingMixin, Physics):
             name = f"{name}_isothermal"
         if (x := self.params["setup"].get("thermal_conductivity_multiplier", 1)) != 1:
             name = f"{name}_diffusion={x}"
-        if (x := self.params['setup'].get('friction_coef', None)):
+        if x := self.params["setup"].get("friction_coef", None):
             name = f"{name}_friction={x}"
         return name
 
@@ -150,11 +150,11 @@ def make_model(setup: dict):
         dt_init = 1e-3
         if setup["grid_refinement"] >= 33:
             dt_init = 1e-4  # Is this necessary?
-        end_time = setup.get('end_time', 5e2)
+        end_time = setup.get("end_time", 5e2)
     porosity = 1.3e-2  # probably on the low side
 
     thermal_conductivity_multiplier = setup.get("thermal_conductivity_multiplier", 1)
-    friction_coef = setup.get('friction_coef', 0.577)
+    friction_coef = setup.get("friction_coef", 0.577)
 
     params = {
         "setup": setup,
@@ -228,7 +228,7 @@ def run_model(setup: dict):
             "prepare_simulation": False,
             "progressbars": False,
             "nl_convergence_tol": float("inf"),
-            "nl_convergence_tol_res": 1e-7,
+            "nl_convergence_tol_res": 1e-6,
             "nl_divergence_tol": 1e8,
             "max_iterations": 10,
             # experimental
@@ -243,35 +243,17 @@ def run_model(setup: dict):
     return model
 
 
-if __name__ == "__main__":
-
-    # for friction_coef in [0.2]:
-    # for thermal_conductivity_multiplier in [0.01, 100]:
-
+def run_grid_refinement_experiment():
+    print("Running Grid Refinement Experiment")
     common_params = {
         "geometry": "4h_steady",
         "save_matrix": False,
-        # "isothermal": False,
-        # "friction_coef": friction_coef,
-        # 'thermal_conductivity_multiplier': thermal_conductivity_multiplier,
     }
-
-    for g in [
-        1,
-        # 2,
-        # 5,
-        # 25,
-        # 33,
-        # 40,
-    ]:
+    for g in [1, 2, 5, 25, 33, 40]:
         for s in [
             # 'FGMRES',
-            # "SAMG",
+            "SAMG",
             "CPR",
-            # "SAMG+ILU",
-            # "S4_diag+ILU",
-            # "AAMG+ILU",
-            # "S4_diag",
         ]:
             print("Running steady state")
             params = {
@@ -290,3 +272,107 @@ if __name__ == "__main__":
                 "solver": s,
             } | common_params
             run_model(params)
+
+
+def run_grid_refinement_direct_solver():
+    print("Running Direct Solver Experiment")
+    common_params = {
+        "geometry": "4h_steady",
+        "save_matrix": False,
+    }
+    for g in [1, 2, 5, 25, 33, 40]:
+        for s in [0]:
+            print("Running steady state")
+            params = {
+                "grid_refinement": g,
+                "steady_state": True,
+                "solver": s,
+            } | common_params
+            run_model(params)
+            end_state_filename = params["end_state_filename"]
+
+            print("Running injection")
+            params = {
+                "grid_refinement": g,
+                "steady_state": False,
+                "initial_state": end_state_filename,
+                "solver": s,
+            } | common_params
+            run_model(params)
+
+
+def run_friction_coeff_experiment():
+    g = 25
+    print("Running Friction Coefficient Experiment")
+    for friction_coef in [0.1, 0.2, 0.3, 0.577, 0.9]:
+        common_params = {
+            "geometry": "4h_steady",
+            "save_matrix": False,
+            "friction_coef": friction_coef,
+        }
+        for s in ["SAMG", "CPR"]:
+            print("Running steady state")
+            params = {
+                "grid_refinement": g,
+                "steady_state": True,
+                "solver": s,
+            } | common_params
+            run_model(params)
+            end_state_filename = params["end_state_filename"]
+
+            print("Running injection")
+            params = {
+                "grid_refinement": g,
+                "steady_state": False,
+                "initial_state": end_state_filename,
+                "solver": s,
+            } | common_params
+            run_model(params)
+
+
+def run_peclet_experiment():
+    g = 25
+    print("Running Peclet Experiment")
+    for thermal_conductivity_multiplier in [0.01, 1, 100]:
+        common_params = {
+            "geometry": "4h_steady",
+            "save_matrix": False,
+            "thermal_conductivity_multiplier": thermal_conductivity_multiplier,
+        }
+        for s in ["SAMG", "CPR"]:
+            print("Running steady state")
+            params = {
+                "grid_refinement": g,
+                "steady_state": True,
+                "solver": s,
+            } | common_params
+            run_model(params)
+            end_state_filename = params["end_state_filename"]
+
+            print("Running injection")
+            params = {
+                "grid_refinement": g,
+                "steady_state": False,
+                "initial_state": end_state_filename,
+                "solver": s,
+            } | common_params
+            run_model(params)
+
+
+import sys
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        run_grid_refinement_experiment()
+
+    command = sys.argv[1]
+    if command == 'friction':
+        run_friction_coeff_experiment()
+    elif command == 'peclet':
+        run_peclet_experiment()
+    elif command == 'refinement':
+        run_grid_refinement_experiment()
+    elif command == 'direct':
+        run_grid_refinement_direct_solver()
+    else:
+        raise ValueError(command)

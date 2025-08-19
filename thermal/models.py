@@ -129,6 +129,11 @@ class Physics(CubicLawPermeability, Thermoporomechanics):
         self._linear_solve_stats.temp_min = tmin
         self._linear_solve_stats.temp_max = tmax
         print(f"Temperature: {tmin:.2f}, {tmax:.2f}")
+        
+        pressure = self.pressure(self.mdg.subdomains()).value(self.equation_system)
+        pmin, pmax = min(pressure), max(pressure)
+        self._linear_solve_stats.pressure_min = pmin
+        self._linear_solve_stats.pressure_max = pmax
 
         cfl = self.compute_cfl()
         enthalpy_max, enthalpy_mean, fourier_max, fourier_mean = (

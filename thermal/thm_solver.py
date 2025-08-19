@@ -327,9 +327,10 @@ class THMSolver(IterativeHMSolver):
             ],
             inner=PetscKSPScheme(
                 petsc_options={
-                    # "ksp_type": "fgmres",
                     "ksp_monitor": None,
                     "ksp_rtol": 1e-12,
+                    # 'ksp_gmres_restart': 100,
+                    # 'ksp_max_it': 200,
                 },
                 compute_eigenvalues=False,
                 preconditioner=PetscFieldSplitScheme(
