@@ -176,10 +176,13 @@ from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 
 class SuccessClassifier(ClassifierMixin, BaseEstimator):
 
-    def __init__(self):
+    def __init__(self, classifier=None):
         self.classes_ = np.array([False, True])
         self.scaler = StandardScaler()
-        self.classifier = SGDClassifier(loss="log_loss", max_iter=100, random_state=42)
+        if classifier is None:
+            self.classifier = SGDClassifier(loss="log_loss", max_iter=100, random_state=42)
+        else:
+            self.classifier = classifier
 
     def fit(self, X, y):
         classes = np.array([False, True])
@@ -217,8 +220,18 @@ from sklearn.neural_network import MLPRegressor
 
 class RewardRegressor(RegressorMixin, BaseEstimator):
 
-    def __init__(self):
+    def __init__(self, model):
         self.scaler = StandardScaler()
+        if model is None:
+            self.regressor = SGDRegressor(
+                random_state=42,
+                penalty="l2",
+                alpha=0.001,
+                eta0=0.001,
+                # early_stopping=True,
+            )
+        else:
+            self.regressor = model
         # self.regressor = MLPRegressor(
         #     # tuned for MAE online
         #     hidden_layer_sizes=(8,8,8),
@@ -226,13 +239,6 @@ class RewardRegressor(RegressorMixin, BaseEstimator):
         #     learning_rate_init=0.001,
         #     random_state=42
         # )
-        self.regressor = SGDRegressor(
-            random_state=42,
-            penalty="l2",
-            alpha=0.001,
-            eta0=0.001,
-            # early_stopping=True,
-        )
         # self.regressor = SGDRegressor(
         #     random_state=42,
         #     alpha=0.0001,

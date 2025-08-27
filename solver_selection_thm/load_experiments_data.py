@@ -86,18 +86,18 @@ def load_experiments_data_thm(runs: list[int], random_selection: bool):
     return data_simulations_common, solver_selection_history_common, solver_selector
 
 
-def load_experiments_data_spe(runs: list[int], random_selection: bool):
+def load_experiments_data_spe(runs: list[int], random_selection: bool, dir='../stats/'):
 
     data_simulations_common = []
     solver_selection_history_common = []
 
     for run_idx in runs:
 
-        with open(f"../stats/spe_solver_space_scheme_run_{run_idx}.pkl", "rb") as f:
+        with open(f"{dir}spe_solver_space_scheme_run_{run_idx}.pkl", "rb") as f:
             solver_space_scheme = pickle.load(f)
 
         # Load permutations
-        with open(f"../stats/spe_permutations_{run_idx}.pkl", "rb") as f:
+        with open(f"{dir}spe_permutations_{run_idx}.pkl", "rb") as f:
             permutations = pickle.load(f)
             permutations_x = permutations['x']
             permutations_z = permutations['z']
@@ -107,7 +107,7 @@ def load_experiments_data_spe(runs: list[int], random_selection: bool):
             solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
         )
         num_solvers = len(solver_space.all_decisions_encoding)
-        print("Num solvers:", num_solvers)
+        # print("Num solvers:", num_solvers)
 
         performance_predictor = PerformancePredictorPassiveAgressive(
             num_solvers=num_solvers,
@@ -137,10 +137,10 @@ def load_experiments_data_spe(runs: list[int], random_selection: bool):
                 if random_selection:
                     sim_name = f"RANDOM_{sim_name}"
                 try:
-                    data = load_data(f"../stats/{sim_name}.json")
+                    data = load_data(f"{dir}{sim_name}.json")
                     data_row.append(data)
                     solver_selector.history.load(
-                        f"../stats/solver_selection_history_{sim_name}.npy"
+                        f"{dir}solver_selection_history_{sim_name}.npy"
                     )
                     solver_selection_history.append(copy(solver_selector.history))
                 except FileNotFoundError:

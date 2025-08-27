@@ -25,7 +25,6 @@ if TYPE_CHECKING:
         KSPScheme,
     )
 
-from mat_utils import PetscGMRES, PetscRichardson, condest, eigs
 from stats import TimeStepStats
 
 
@@ -268,6 +267,8 @@ def solve_petsc(
     return_solution: bool = False,
     ksp_view: bool = False,
 ):
+    from mat_utils import PetscGMRES, PetscRichardson, condest, eigs
+
     if rhs is None:
         rhs = np.ones(mat.shape[0])
     gmres = PetscGMRES(mat, pc=prec, tol=tol, pc_side=pc_side)
@@ -759,6 +760,8 @@ def solve_petsc_new(
     restrict_indices: list[int] = None,
     use_richardson: bool = False,
 ):
+    from mat_utils import PetscGMRES, PetscRichardson, condest, eigs
+
     mat_Q = mat.copy()
     if Qleft is not None:
         assert Qleft.active_groups == mat.active_groups
