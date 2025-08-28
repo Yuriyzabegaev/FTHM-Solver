@@ -1,14 +1,26 @@
-from collections import defaultdict
 import multiprocessing as mp
+import warnings
+from collections import defaultdict
+from copy import deepcopy
+from dataclasses import dataclass
 from itertools import count
 from time import time
-import json
 
 import numpy as np
 import pandas as pd
 from load_experiments_data import load_experiments_data_spe
+from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.ensemble import GradientBoostingRegressor
-from solver_selection_thm.performance_predictor import SuccessClassifier
+from sklearn.linear_model import RidgeCV, PassiveAggressiveRegressor
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.neural_network import MLPRegressor
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+
+from solver_selection_thm.performance_predictor import (
+    SuccessClassifier,
+    RewardRegressor,
+)
 
 
 def make_pandas(sim_data, perf_data, seq_ids):
@@ -59,6 +71,26 @@ def make_pandas(sim_data, perf_data, seq_ids):
                 solver_selection_history.features[reward_idx]
             )
     return pd.DataFrame(data=sim_data_dict), pd.DataFrame(data=perf_data_dict)
+
+
+class PipelineWithPartialFit:
+    def __init__(self, steps):
+        self.steps = steps
+
+    def fit(self, X, y):
+        for step in self.steps[:-1]:
+            X = step.fit_transform(X)
+        self.steps[-1].fit(X, y)
+
+    def partial_fit(self, X, y):
+        for step in self.steps[:-1]:
+            X = step.transform(X)
+        self.steps[-1].partial_fit(X, y)
+
+    def predict(self, X):
+        for step in self.steps[:-1]:
+            X = step.transform(X)
+        return self.steps[-1].predict(X)
 
 
 class IncrementalRefitModel:
@@ -183,12 +215,6 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
     X = np.clip(X, -1e10, 1e10)
     y = np.array(df_perf.reward)
 
-    oracle = oracle = TwoEstimators(
-        classifier=SuccessClassifier(),
-        regressor=GradientBoostingRegressor(random_state=42),
-    )
-    oracle.fit(X, y)
-
     incremental_learning = experiment_setup["incremental_learning"]
     one_decision = experiment_setup["one_decision"]
     seq_id = experiment_setup["seq_id"]
@@ -200,20 +226,30 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
     experiments_total = experiment_setup["experiments_total"]
     print(f"Start experiment {experiment_idx} / {experiments_total}")
 
+    oracle = TwoEstimators(
+        classifier=SuccessClassifier(random_state=experiment_idx),
+        regressor=GradientBoostingRegressor(random_state=experiment_idx),
+    )
+    oracle.fit(X, y)
+
     filter_ = np.array((df_perf.seq_id == seq_id))
     X_ranking = X[filter_]
     y_ranking = y[filter_]
 
+    np.random.seed(experiment_idx)
+    # perm = np.random.permutation(y_ranking.size)
+    # X_ranking = X_ranking[perm]
+    # y_ranking = y_ranking[perm]
+
     num_offline = int(num_solvers * gamma)
+    num_online = num_solvers
+
+    # X_online, X_offline, y_online, y_offline = train_test_split(X_ranking, y_ranking, test_size=num_offline, random_state=experiment_idx)
 
     X_offline = X_ranking[:num_offline]
     y_offline = y_ranking[:num_offline]
-    X_online = X_ranking[num_offline:]
-    # y_online = y_ranking[num_offline:]
-
-    # np.random.seed(42)
-    # np.random.shuffle(X_offline)
-    # np.random.shuffle(y_offline)
+    X_online = X_ranking[num_online:]
+    # y_online = y_ranking[num_online:]
 
     online_model = EpsGreedyExplorationModel(
         eps=eps,
@@ -221,7 +257,7 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
         model=TwoEstimators(
             classifier=SuccessClassifier(),
             regressor=IncrementalRefitModel(
-                model=GradientBoostingRegressor(random_state=42)
+                model=GradientBoostingRegressor(random_state=experiment_idx)
             ),
         ),
     )
@@ -255,7 +291,6 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
 
         # offline
         predictions_offline = oracle.predict(x_to_predict)
-        # predictions_offline = np.arange(predictions_offline.size)
 
         # feedback
         X_feedback = x_to_predict[max_score_idx_online].reshape(1, -1)
@@ -292,7 +327,11 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
         [x["yoracle"][np.argmax(x["ypred"])] for x in data_incremental]
     )
     decision_id = np.array([np.argmax(x["ypred"]) for x in data_incremental])
+    tpred = np.array([x['tpred'] for x in data_incremental])
+    tfeedback = np.array([x['tfeedback'] for x in data_incremental])
 
+    data_for_pandas['tpred'] = tpred
+    data_for_pandas['tfeedback'] = tfeedback
     data_for_pandas["ypred"] = ypred
     data_for_pandas["yoracle"] = yoracle
     data_for_pandas["yfeedback"] = yfeedback

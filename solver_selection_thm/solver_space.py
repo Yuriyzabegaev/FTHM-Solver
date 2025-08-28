@@ -21,6 +21,7 @@ class NumericalChoices:
         self.choices: np.ndarray = np.array(choices)
         self.dtype: np.dtype = dtype or self.choices.dtype
         self.tag: str | None = tag
+        self.id: int = -1  # This will be set during the initialization of SolverSpace
 
     def __repr__(self):
         return f"NumericalChoices({self.tag}: {self.choices})"
@@ -32,11 +33,11 @@ class NumericalChoices:
 class FlatSolverDecision:
     def __init__(
         self,
-        categorical: Optional[set["DecisionNode"]] = None,
-        numerical: Optional[set[NumericalChoices]] = None,
+        categorical: Optional[list["DecisionNode"]] = None,
+        numerical: Optional[list[NumericalChoices]] = None,
     ):
-        self.categorical: set[DecisionNode] = categorical or set()
-        self.numerical: set[NumericalChoices] = numerical or set()
+        self.categorical: list[DecisionNode] = categorical or []
+        self.numerical: list[NumericalChoices] = numerical or []
 
     def __repr__(self):
         return f"FlatSolverConfig({self.categorical}, {self.numerical})"
@@ -47,6 +48,7 @@ class DecisionNode:
         self.solver_space_scheme: dict | Any = solver_space_scheme
         self.children: list[ForkNode] = []
         self.numerical_choices: list[NumericalChoices] = []
+        self.id: int = -1  # This will be set during the initialization of SolverSpace
 
     def _str(self, prefix="") -> str:
         if not isinstance(self.solver_space_scheme, dict):
@@ -70,14 +72,14 @@ class DecisionNode:
         if isinstance(self.solver_space_scheme, dict):
             k, v = next(iter(self.solver_space_scheme.items()))
             return f"DecisionNode({k}, {v})"
-        
+
         return f"DecisionNode({self.solver_space_scheme})"
 
     def __str__(self) -> str:
         return self._str()
 
     def list_possible_solvers(self) -> list[FlatSolverDecision]:
-        my_numerical_choices = set(self.numerical_choices)
+        my_numerical_choices = list(self.numerical_choices)
         if len(self.children) == 0:
             flat_config = FlatSolverDecision(numerical=my_numerical_choices)
             return [flat_config]
@@ -86,9 +88,9 @@ class DecisionNode:
 
         merged_results = []
         for tuple_of_decisions in list(product(*children_solver_spaces)):
-            cat = set(x for conf in tuple_of_decisions for x in conf.categorical)
-            num = set(x for conf in tuple_of_decisions for x in conf.numerical)
-            num |= my_numerical_choices
+            cat = [x for conf in tuple_of_decisions for x in conf.categorical]
+            num = [x for conf in tuple_of_decisions for x in conf.numerical]
+            num.extend(my_numerical_choices)
             merged_results.append(FlatSolverDecision(categorical=cat, numerical=num))
         return merged_results
 
@@ -123,7 +125,7 @@ class ForkNode:
         for child in self.children:
             child_solver_space = child.list_possible_solvers()
             for solver in child_solver_space:
-                solver.categorical.add(child)
+                solver.categorical.append(child)
             solver_space.extend(child_solver_space)
         return solver_space
 
@@ -173,53 +175,39 @@ def build_decision_tree(
 
 def make_choices_map(
     solver_space: list[FlatSolverDecision],
-) -> tuple[dict[int, int], dict[int, int]]:
-    category_choices_map: dict[int, int] = dict()
-    numerical_choices_map: dict[int, int] = dict()
+) -> tuple[int, int]:
     category_choices_counter = count()
     numerical_choices_counter = count()
 
     for solver in solver_space:
         for choice in solver.categorical:
-            choice_id = id(choice)
-            if category_choices_map.get(choice_id) is not None:
-                continue
-            category_idx = next(category_choices_counter)
-            category_choices_map[choice_id] = category_idx
-        for numerical_choice in solver.numerical:
-            choice_id = id(numerical_choice)
-            if numerical_choices_map.get(choice_id) is not None:
-                continue
+            if choice.id == -1:
+                choice.id = next(category_choices_counter)
 
-            numerical_idx = next(numerical_choices_counter)
-            numerical_choices_map[choice_id] = numerical_idx
-    return category_choices_map, numerical_choices_map
+        for numerical_choice in solver.numerical:
+            if not hasattr(numerical_choice, "id"):  # will remove
+                numerical_choice.id = -1
+            if numerical_choice.id == -1:
+                numerical_choice.id = next(numerical_choices_counter)
+
+    return next(category_choices_counter), next(numerical_choices_counter)
 
 
 def make_all_decisions_encoding(
     solver_space: list[FlatSolverDecision],
-    category_choices_map: dict[int, int],
-    numerical_choices_map: dict[int, int],
+    num_category_choices: int,
+    num_numerical_choices: int,
 ) -> np.ndarray:
-    num_category_choices = len(category_choices_map)
-    num_numerical_choices = len(numerical_choices_map)
-
     all_possible_decisions: list[np.ndarray] = []
     for solver in solver_space:
-        categorical_decision = [
-            category_choices_map[id(choice)] for choice in solver.categorical
-        ]
-        numerical_decision: dict[int, NumericalChoices] = {
-            numerical_choices_map[id(numerical_choice)]: numerical_choice
-            for numerical_choice in solver.numerical
-        }
+        categorical_decision = [choice.id for choice in solver.categorical]
 
         categorical_encoding = np.zeros((1, num_category_choices))
         categorical_encoding[:, categorical_decision] = 1
 
         numerical_encoding = [np.zeros(1) for _ in range(num_numerical_choices)]
-        for i, choice in numerical_decision.items():
-            numerical_encoding[i] = choice.choices
+        for choice in solver.numerical:
+            numerical_encoding[choice.id] = choice.choices
         x = np.atleast_2d(np.meshgrid(*numerical_encoding, indexing="ij"))
         if x.size != 0:
             x = x.reshape(num_numerical_choices, -1).T
@@ -248,15 +236,15 @@ class SolverSpace:
             self.decision_tree.list_possible_solvers()
         )
 
-        category_choices_map, numerical_choices_map = make_choices_map(
+        num_category_choices, num_numerical_choices = make_choices_map(
             self.flat_solver_decisions
         )
-        self.category_choices_map: dict[int, int] = category_choices_map
-        self.numerical_choices_map: dict[int, int] = numerical_choices_map
+        self.num_category_choices: int = num_category_choices
+        self.num_numerical_choices: int = num_numerical_choices
         self.all_decisions_encoding: np.ndarray = make_all_decisions_encoding(
             solver_space=self.flat_solver_decisions,
-            category_choices_map=self.category_choices_map,
-            numerical_choices_map=self.numerical_choices_map,
+            num_category_choices=num_category_choices,
+            num_numerical_choices=num_numerical_choices,
         )
 
     def config_from_decision(
