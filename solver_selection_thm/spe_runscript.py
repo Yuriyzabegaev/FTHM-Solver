@@ -16,7 +16,7 @@ from solver_selection_thm.performance_predictor import (
     PerformancePredictorEpsGreedy,
     RewardEstimator,
     Estimator,
-    PerformancePredictorRandom
+    PerformancePredictorRandom,
 )
 from solver_selection_thm.solver_space import SolverSpace
 from solver_selection_thm.pp_binding import (
@@ -27,20 +27,21 @@ from stats import StatisticsSavingMixin
 
 
 class ModelTHMWithSelector(StatisticsSavingMixin, SolverSelectionMixinTH, SPE10Model):
-    def data_to_export(self):
-        data = super().data_to_export()
-        sds = self.mdg.subdomains()
-        cell_offsets = np.cumsum([0] + [sd.num_cells for sd in sds])
-        q = self.evaluate_and_scale(sds, "porosity", "m^3")
-        for id, sd in enumerate(sds):
-            data.append(
-                (
-                    sd,
-                    "permeability",
-                    q[cell_offsets[id] : cell_offsets[id + 1]],
-                )
-            )
-        return data
+    pass
+    # def data_to_export(self):
+    #     data = super().data_to_export()
+    #     sds = self.mdg.subdomains()
+    #     cell_offsets = np.cumsum([0] + [sd.num_cells for sd in sds])
+    #     q = self.evaluate_and_scale(sds, "porosity", "m^3")
+    #     for id, sd in enumerate(sds):
+    #         data.append(
+    #             (
+    #                 sd,
+    #                 "permeability",
+    #                 q[cell_offsets[id] : cell_offsets[id + 1]],
+    #             )
+    #         )
+    #     return data
 
 
 def make_solver_space_scheme_hm(nd: int):
@@ -62,30 +63,16 @@ def make_solver_space_scheme_hm(nd: int):
                     "python_pc_type": "ilu",
                     "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
                 },
-                {
-                    "python_pc_type": "sor",
-                },
-                {
-                    "python_pc_type": "pbjacobi",
-                },
+                {"python_pc_type": "sor"},
+                {"python_pc_type": "pbjacobi"},
                 {
                     "python_pc_type": "hypre",
                     "python_pc_hypre_type": "boomeramg",
                     "python_pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                        [
-                            0.5,
-                            0.7,
-                            0.9,
-                        ]
+                        [0.5, 0.6, 0.7, 0.8, 0.9]
                     ),
                     "python_pc_hypre_boomeramg_P_max": 16,
-                    "python_pc_hypre_boomeramg_agg_nl": NumericalChoices(
-                        [
-                            0,
-                            1,
-                            2,
-                        ]
-                    ),
+                    "python_pc_hypre_boomeramg_agg_nl": NumericalChoices([0, 1, 2]),
                     "python_pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
                             "symmetric-SOR/Jacobi",
@@ -94,6 +81,22 @@ def make_solver_space_scheme_hm(nd: int):
                             "Jacobi",
                         ]
                     ),
+                    "python_pc_hypre_boomeramg_cycle_type": CategoricalChoices(
+                        ["V", "W"]
+                    ),
+                    "python_pc_hypre_boomeramg_grid_sweeps_all": NumericalChoices(
+                        [1, 2, 3]
+                    ),
+                },
+                {
+                    "python_pc_type": "gamg",
+                    "python_pc_gamg_threshold": NumericalChoices(
+                        [-1, 0, 0.2, 0.5, 0.7]
+                    ),
+                    "python_pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                    "python_pc_gamg_aggressive_coarsening": NumericalChoices([1, 2]),
+                    "python_pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
+                    "python_mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
                 },
             ]
         ),
@@ -108,32 +111,47 @@ def make_solver_space_scheme_hm(nd: int):
                 "fieldsplit_options": {
                     "pc_fieldsplit_type": "additive",
                 },
-                "elim_options": {
-                    "pc_type": "hypre",
-                    "pc_hypre_type": "boomeramg",
-                    "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                        [
-                            0.5,
-                            0.7,
-                            0.9,
-                        ]
-                    ),
-                    "pc_hypre_boomeramg_agg_nl": NumericalChoices(
-                        [
-                            0,
-                            1,
-                            2,
-                        ]
-                    ),
-                    "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
-                        [
-                            "symmetric-SOR/Jacobi",
-                            "l1scaled-Jacobi",
-                            "SOR/Jacobi",
-                            "Jacobi",
-                        ]
-                    ),
-                },
+                "elim_options": CategoricalChoices(
+                    [
+                        {
+                            "pc_type": "hypre",
+                            "pc_hypre_type": "boomeramg",
+                            "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
+                                [0.5, 0.6, 0.7, 0.8, 0.9]
+                            ),
+                            "pc_hypre_boomeramg_P_max": 16,
+                            "pc_hypre_boomeramg_agg_nl": NumericalChoices(
+                                [0, 1, 2]
+                            ),
+                            "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
+                                [
+                                    "symmetric-SOR/Jacobi",
+                                    "l1scaled-Jacobi",
+                                    "SOR/Jacobi",
+                                    "Jacobi",
+                                ]
+                            ),
+                            "pc_hypre_boomeramg_cycle_type": CategoricalChoices(
+                                ["V", "W"]
+                            ),
+                            "pc_hypre_boomeramg_grid_sweeps_all": NumericalChoices(
+                                [1, 2, 3]
+                            ),
+                        },
+                        {
+                            "pc_type": "gamg",
+                            "pc_gamg_threshold": NumericalChoices(
+                                [-1, 0, 0.2, 0.5, 0.7]
+                            ),
+                            "pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                            "pc_gamg_aggressive_coarsening": NumericalChoices(
+                                [1, 2]
+                            ),
+                            "pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
+                            "mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
+                        },
+                    ]
+                ),
                 "complement": {
                     "block_type": "PetscFieldSplitScheme",
                     "groups": temp,
@@ -178,9 +196,9 @@ def make_solver_space_scheme_hm(nd: int):
             "ksp_rtol": 1e-12,
             "ksp_gmres_restart": NumericalChoices(
                 [
-                    10,
                     30,
                     50,
+                    100,
                 ]
             ),
         },
@@ -195,11 +213,13 @@ def make_solver_space_scheme_hm(nd: int):
         },
     }
 
+
 RANDOM_SELECTION = True
 
 
 if __name__ == "__main__":
     import pickle
+
     NUM_RUNS = 5
     np.random.seed(42)
     Z_SLICES = np.array(Z_SLICES)
@@ -207,17 +227,22 @@ if __name__ == "__main__":
     permutations_z = [np.random.permutation(len(Z_SLICES)) for i in range(5)]
     permutations_x = [np.random.permutation(len(X_SLICES)) for i in range(5)]
 
-    IDX_START = 40
+    IDX_START = 100
     solver_space_scheme = make_solver_space_scheme_hm(nd=3)
 
     for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
         print("Starting run", run_idx)
 
-
         with open(f"stats/spe_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
             pickle.dump(solver_space_scheme, f)
         with open(f"stats/spe_permutations_{run_idx}.pkl", "wb") as f:
-            pickle.dump({'x': permutations_x[run_idx - IDX_START], 'z': permutations_z[run_idx - IDX_START]}, f)
+            pickle.dump(
+                {
+                    "x": permutations_x[run_idx - IDX_START],
+                    "z": permutations_z[run_idx - IDX_START],
+                },
+                f,
+            )
 
         solver_space = SolverSpace(
             solver_space_scheme=solver_space_scheme,
