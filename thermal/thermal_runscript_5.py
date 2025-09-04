@@ -283,7 +283,7 @@ def make_model(setup: dict):
             schedule=[0, end_time * DAY],
             iter_max=10,
             constant_dt=False,
-            recomp_max=1,
+            recomp_max=10,
         ),
         "units": pp.Units(kg=1e10),
         "meshing_arguments": {
@@ -308,7 +308,7 @@ def run_model(setup: dict):
             "prepare_simulation": False,
             "progressbars": False,
             "nl_convergence_tol": float("inf"),
-            "nl_convergence_tol_res": 1e-8,
+            "nl_convergence_tol_res": 1e-7,
             "nl_divergence_tol": 1e8,
             "max_iterations": 10,
             # experimental
@@ -317,34 +317,25 @@ def run_model(setup: dict):
             "Local_line_search": 1,  # Set to 0 to use turn off the tailored line search
         },
     )
-
     write_dofs_info(model)
     print(model.simulation_name())
 
 
-if __name__ == "__main__":
+def run_grid_refinement_experiment():
+    print("Running Grid Refinement Experiment")
     common_params = {
         "geometry": "5",
         "save_matrix": False,
-        # "isothermal": True,
     }
     for g in [
-        0.5,
+        5,
+        2,
         1,
-        # 2,
-        # 5,
-        # 6,
-        # 15,
-        # 20
+        0.5,
     ]:
         for s in [
-            # "SAMG",
             "CPR",
-            # 'FGMRES',
-            # "S4_diag",
-            # "SAMG+ILU",
-            # "S4_diag+ILU",
-            # "AAMG+ILU",
+            "SAMG",
         ]:
             print("Running steady state")
             params = {
@@ -354,7 +345,6 @@ if __name__ == "__main__":
             } | common_params
             run_model(params)
             end_state_filename = params["end_state_filename"]
-            # end_state_filename = '/home/porepy/volume/nrec_fhm/stats_thermal_geo5x2_solFGMRES_endstate_1743628386898.npy'
 
             print("Running injection")
             params = {
@@ -364,3 +354,50 @@ if __name__ == "__main__":
                 "solver": s,
             } | common_params
             run_model(params)
+
+
+def run_grid_refinement_direct_solver():
+    print("Running Direct Solver Experiment")
+    common_params = {
+        "geometry": "5",
+        "save_matrix": False,
+    }
+    for g in [
+        0.5,
+        1,
+        2,
+        5
+    ]:
+        for s in [0]:
+            print("Running steady state")
+            params = {
+                "grid_refinement": g,
+                "steady_state": True,
+                "solver": s,
+            } | common_params
+            run_model(params)
+            end_state_filename = params["end_state_filename"]
+
+            print("Running injection")
+            params = {
+                "grid_refinement": g,
+                "steady_state": False,
+                "initial_state": end_state_filename,
+                "solver": s,
+            } | common_params
+            run_model(params)
+
+
+import sys
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        run_grid_refinement_experiment()
+
+    command = sys.argv[1]
+    if command == 'refinement':
+        run_grid_refinement_experiment()
+    elif command == 'direct':
+        run_grid_refinement_direct_solver()
+    else:
+        raise ValueError(command)

@@ -4,12 +4,13 @@ tex_fonts = {
     # Use LaTeX to write all text
     # "text.usetex": True,
     "font.family": "serif",
-    "axes.labelsize": 10,
-    "font.size": 10,
+    "axes.labelsize": 12,
+    "font.size": 12,
+    "axes.titlesize": 12, 
     # Make the legend/label fonts a little smaller
-    "legend.fontsize": 9,
-    "xtick.labelsize": 9,
-    "ytick.labelsize": 9,
+    "legend.fontsize": 10,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
 }
 
 sns.set_theme(

@@ -357,20 +357,16 @@ class THMSolver(IterativeHMSolver):
                             groups=mech,
                             elim_options=(
                                 {
-                                    # "pc_type": "hypre",
-                                    # "pc_hypre_type": "boomeramg",
-                                    # "pc_hypre_boomeramg_strong_threshold": 0.7,
-                                    # #
-                                    # 'pc_hypre_boomeramg_max_row_sum': 1.0,
-                                    # # "pc_hypre_boomeramg_smooth_type": "Euclid",
+                                    "pc_type": "hypre",
+                                    "pc_hypre_type": "boomeramg",
+                                    "pc_hypre_boomeramg_strong_threshold": 0.7,
+                                } if nd == 3 else {
                                     "pc_type": "hmg",
                                     "hmg_inner_pc_type": "hypre",
                                     "hmg_inner_pc_hypre_type": "boomeramg",
                                     "hmg_inner_pc_hypre_boomeramg_strong_threshold": 0.7,
                                     "mg_levels_ksp_type": "richardson",
                                     "mg_levels_ksp_max_it": 2,
-                                    # 3D model has bad grid
-                                    "mg_levels_pc_type": "ilu" if nd == 3 else "sor",
                                 }
                             ),
                             keep_options={},

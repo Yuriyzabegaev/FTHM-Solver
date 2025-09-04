@@ -349,6 +349,23 @@ def get_run_construct_time(x: Sequence[TimeStepStats]) -> list[float]:
     return result
 
 
+def get_pressure_max(x: Sequence[TimeStepStats]) -> list[float]:
+    result = []
+    for ts in x:
+        for ls in ts.linear_solves:
+            construct_time = ls.construct_time
+            result.append(ls.pressure_max)
+    return result
+
+def get_pressure_min(x: Sequence[TimeStepStats]) -> list[float]:
+    result = []
+    for ts in x:
+        for ls in ts.linear_solves:
+            construct_time = ls.construct_time
+            result.append(ls.pressure_min)
+    return result
+
+
 def get_newton_iterations(x: Sequence[TimeStepStats]) -> list[float]:
     result = []
     for ts in x:
