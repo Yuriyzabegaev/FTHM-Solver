@@ -178,6 +178,7 @@ class SuccessClassifier(ClassifierMixin, BaseEstimator):
     def __init__(self, classifier=None, random_state=42):
         self.classes_ = np.array([False, True])
         self.scaler = StandardScaler()
+        self.random_state = random_state
         if classifier is None:
             self.classifier = SGDClassifier(
                 loss="log_loss", max_iter=100, random_state=random_state
@@ -219,13 +220,13 @@ class SuccessClassifier(ClassifierMixin, BaseEstimator):
 class RewardRegressor(RegressorMixin, BaseEstimator):
     def __init__(self, random_state=42):
         self.scaler = StandardScaler()
-        # self.regressor = SGDRegressor(
-        #     random_state=random_state,
-        #     penalty="l2",
-        #     alpha=0.001,
-        #     eta0=0.001,
-        # )
-        self.regressor = PassiveAggressiveRegressor(random_state=random_state)
+        self.regressor = SGDRegressor(
+            random_state=random_state,
+            penalty="l2",
+            alpha=0.001,
+            eta0=0.001,
+        )
+        # self.regressor = PassiveAggressiveRegressor(random_state=random_state)
 
     def fit(self, X, y):
         X = self.scaler.fit_transform(X)

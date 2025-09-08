@@ -3,23 +3,37 @@ import warnings
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import partial
 from itertools import count
 from time import time
 
 import numpy as np
 import pandas as pd
-from load_experiments_data import load_experiments_data_spe
+from load_experiments_data import load_experiments_data_spe, load_experiments_data_thm
 from sklearn.base import BaseEstimator, RegressorMixin, clone
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.linear_model import RidgeCV, PassiveAggressiveRegressor
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.dummy import DummyClassifier
+from sklearn.linear_model import PassiveAggressiveRegressor, RidgeCV, RidgeClassifier, Ridge
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    make_scorer,
+    mean_absolute_error,
+    r2_score,
+)
+from sklearn.model_selection import (
+    GridSearchCV,
+    KFold,
+    cross_validate,
+    train_test_split,
+)
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
 from solver_selection_thm.performance_predictor import (
-    SuccessClassifier,
     RewardRegressor,
+    SuccessClassifier,
 )
 
 
@@ -118,6 +132,11 @@ class TwoEstimators:
         self.classifier = classifier
         self.regressor = regressor
 
+    def __sklearn_clone__(self):
+        return TwoEstimators(
+            classifier=clone(self.classifier), regressor=clone(self.regressor)
+        )
+
     def fit(self, X, y):
         success = y >= FAIL_REWARD
         self.classifier.fit(X, success)
@@ -133,7 +152,7 @@ class TwoEstimators:
             self.regressor.partial_fit(X[success], y[success])
 
     def predict(self, X):
-        reward_estimate = np.full(X.shape[0], FAIL_REWARD, dtype=float)
+        reward_estimate = np.full(X.shape[0], FAIL_REWARD - 1, dtype=float)
         success_estimate = self.classifier.predict(X)
         if not np.any(success_estimate):
             return reward_estimate
@@ -195,20 +214,22 @@ def top_eps_accuracy(ypred, ytrue, eps=1e-3):
     return abs(ytrue[i] - np.max(ytrue)) <= eps
 
 
-FAIL_REWARD = -100
+FAIL_REWARD = -99
 EPSGREEDY_EXPECTATION = 100
 
 
-def do_experiment(experiment_setup: dict, dir="./stats/"):
-    sim_data_random, perf_data_random, solver_selector = load_experiments_data_spe(
-        runs=RUNS_RANDOM, random_selection=True, dir=dir
+def do_experiment(
+    experiment_setup: dict, load_experiments_data: callable, all_run_ids: list
+):
+    sim_data_random, perf_data_random, solver_selector = load_experiments_data(
+        runs=all_run_ids, random_selection=True
     )
     num_solvers = solver_selector.solver_space.all_decisions_encoding.shape[0]
 
     df_sim, df_perf = make_pandas(
         sim_data=sim_data_random,
         perf_data=perf_data_random,
-        seq_ids=ALL_RUNS,
+        seq_ids=all_run_ids,
     )
 
     X = np.stack(df_perf.features)
@@ -219,6 +240,8 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
     one_decision = experiment_setup["one_decision"]
     seq_id = experiment_setup["seq_id"]
     gamma = experiment_setup["gamma"]
+    gamma1 = experiment_setup['gamma1']
+    assert (gamma + gamma1) < 1
     eps = experiment_setup["eps"]
     batch_size = experiment_setup["batch_size"]
     eps1 = 0.9
@@ -226,10 +249,16 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
     experiments_total = experiment_setup["experiments_total"]
     print(f"Start experiment {experiment_idx} / {experiments_total}")
 
+    # oracle = TwoEstimators(
+    #     classifier=SuccessClassifier(random_state=experiment_idx),
+    #     regressor=GradientBoostingRegressor(random_state=experiment_idx),
+    # )
+    # oracle = GradientBoostingRegressor(random_state=experiment_idx)
     oracle = TwoEstimators(
-        classifier=SuccessClassifier(random_state=experiment_idx),
-        regressor=GradientBoostingRegressor(random_state=experiment_idx),
+        classifier=GradientBoostingClassifier(random_state=42),
+        regressor=GradientBoostingRegressor(random_state=42),
     )
+
     oracle.fit(X, y)
 
     filter_ = np.array((df_perf.seq_id == seq_id))
@@ -254,14 +283,21 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
     online_model = EpsGreedyExplorationModel(
         eps=eps,
         eps1=eps1,
+        # model=IncrementalRefitModel(
+        #     model=GradientBoostingRegressor(random_state=experiment_idx)
+        # ),
         model=TwoEstimators(
-            classifier=SuccessClassifier(),
+            classifier=IncrementalRefitModel(
+                model=make_pipeline(StandardScaler(), RidgeClassifier())
+                # model=GradientBoostingClassifier(random_state=experiment_idx)
+            ),
             regressor=IncrementalRefitModel(
+                # model=make_pipeline(StandardScaler(), Ridge())
                 model=GradientBoostingRegressor(random_state=experiment_idx)
             ),
         ),
     )
-    online_model.fit(X_offline, y_offline)
+    online_model.fit(X_offline, oracle.predict(X_offline))
 
     all_solvers = solver_selector.solver_space.all_decisions_encoding
     X_online_features = X_online[
@@ -327,11 +363,11 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
         [x["yoracle"][np.argmax(x["ypred"])] for x in data_incremental]
     )
     decision_id = np.array([np.argmax(x["ypred"]) for x in data_incremental])
-    tpred = np.array([x['tpred'] for x in data_incremental])
-    tfeedback = np.array([x['tfeedback'] for x in data_incremental])
+    tpred = np.array([x["tpred"] for x in data_incremental])
+    tfeedback = np.array([x["tfeedback"] for x in data_incremental])
 
-    data_for_pandas['tpred'] = tpred
-    data_for_pandas['tfeedback'] = tfeedback
+    data_for_pandas["tpred"] = tpred
+    data_for_pandas["tfeedback"] = tfeedback
     data_for_pandas["ypred"] = ypred
     data_for_pandas["yoracle"] = yoracle
     data_for_pandas["yfeedback"] = yfeedback
@@ -354,10 +390,77 @@ def do_experiment(experiment_setup: dict, dir="./stats/"):
     return data_for_pandas
 
 
-RUNS_RANDOM = [30, 31, 32, 33, 34]
-ALL_RUNS = [f"R{x}" for x in RUNS_RANDOM]
+
+
+def neg_mae_success(y_true, y_pred, failure_threshold=FAIL_REWARD):
+    mask = (y_true > failure_threshold) & (y_pred > failure_threshold)
+    if not np.any(mask):
+        return np.nan
+    return -mean_absolute_error(y_true[mask], y_pred[mask])
+
+
+def r2_success(y_true, y_pred, failure_threshold=FAIL_REWARD):
+    mask = (y_true > failure_threshold) & (y_pred > failure_threshold)
+    if not np.any(mask):
+        return np.nan
+    return r2_score(y_true[mask], y_pred[mask])
+
+
+def acc_failure(y_true, y_pred, failure_threshold=FAIL_REWARD):
+    return accuracy_score(y_true <= failure_threshold, y_pred <= failure_threshold)
+
+
+def f1_failure(y_true, y_pred, failure_threshold=FAIL_REWARD):
+    return f1_score(y_true <= failure_threshold, y_pred <= failure_threshold)
+
+
+
+
+def score_oracle(load_experiments_data: callable, all_run_ids: list, n_jobs=-1):
+    sim_data_random, perf_data_random, solver_selector = load_experiments_data(
+        runs=all_run_ids, random_selection=True
+    )
+
+    df_sim, df_perf = make_pandas(
+        sim_data=sim_data_random,
+        perf_data=perf_data_random,
+        seq_ids=all_run_ids,
+    )
+
+    X = np.stack(df_perf.features)
+    X = np.clip(X, -1e10, 1e10)
+    y = np.array(df_perf.reward)
+
+    print("Scoring oracle")
+
+    oracle = TwoEstimators(
+        classifier=GradientBoostingClassifier(random_state=42),
+        regressor=GradientBoostingRegressor(random_state=42),
+    )
+
+
+    scoring = {
+        "mae_success": make_scorer(neg_mae_success),
+        "r2_success": make_scorer(r2_success),
+        "acc_failure": make_scorer(acc_failure),
+        "f1_failure": make_scorer(f1_failure),
+    }
+
+    cv_results = cross_validate(
+        oracle,
+        X,
+        y,
+        cv=KFold(n_splits=5, shuffle=True, random_state=42),
+        scoring=scoring,
+        return_train_score=True,
+        return_estimator=True,
+        n_jobs=n_jobs,
+    )
+    return cv_results, scoring
+
 
 if __name__ == "__main__":
+    ALL_RUNS = [30, 31, 32, 33, 34]
     experiment_setups = []
     for seq_id in ALL_RUNS:
         for gamma in [
@@ -402,4 +505,15 @@ if __name__ == "__main__":
     num_processes = mp.cpu_count()
     print(f"{num_processes = }")
     with mp.Pool(num_processes) as pool:
-        results = pool.map(do_experiment, experiment_setups)
+        results = pool.map(
+            partial(
+                do_experiment,
+                load_experiments_data=partial(
+                    load_experiments_data_spe, dir="./stats/"
+                ),
+                all_run_ids=ALL_RUNS,
+            ),
+            experiment_setups,
+        )
+
+    # do_experiment(experiment_setups[0], load_experiments_data=partial(load_experiments_data_spe, dir='./stats/'))

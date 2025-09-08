@@ -230,7 +230,12 @@ if __name__ == "__main__":
     IDX_START = 100
     solver_space_scheme = make_solver_space_scheme_hm(nd=3)
 
+    counter = 0
     for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
+        counter += 1
+        if counter <= 2:
+            continue
+
         print("Starting run", run_idx)
 
         with open(f"stats/spe_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:

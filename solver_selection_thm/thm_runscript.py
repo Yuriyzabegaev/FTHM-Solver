@@ -54,39 +54,44 @@ def make_solver_space_scheme_fthm(nd: int):
                 #     "python_pc_type": "ilu",
                 #     "python_pc_factor_levels": NumericalChoices([0, 1, 2]),
                 # },
-                # {
-                #     "python_pc_type": "sor",
-                # },
-                # {
-                #     "python_pc_type": "pbjacobi",
-                # },
+                # {"python_pc_type": "sor"},
+                # {"python_pc_type": "pbjacobi"},
                 {
                     "python_pc_type": "hypre",
                     "python_pc_hypre_type": "boomeramg",
                     "python_pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                        [
-                            # 0.5,
-                            # 0.7,
-                            0.9,
-                        ]
+                        [0.5, 0.6, 0.7, 0.8, 0.9]
                     ),
                     "python_pc_hypre_boomeramg_P_max": 16,
-                    "python_pc_hypre_boomeramg_agg_nl": NumericalChoices(
+                    "python_pc_hypre_boomeramg_agg_nl": NumericalChoices([0, 1]),
+                    "python_pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                         [
-                            # 0,
-                            # 1,
+                            # "symmetric-SOR/Jacobi",
+                            # "l1scaled-Jacobi",
+                            "SOR/Jacobi",
+                            "Jacobi",
+                        ]
+                    ),
+                    "python_pc_hypre_boomeramg_cycle_type": CategoricalChoices(
+                        ["V", "W"]
+                    ),
+                    "python_pc_hypre_boomeramg_grid_sweeps_all": NumericalChoices(
+                        [
+                            1,
                             2,
                         ]
                     ),
-                    "python_pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
-                        [
-                            "symmetric-SOR/Jacobi",
-                            # "l1scaled-Jacobi",
-                            # "SOR/Jacobi",
-                            # "Jacobi",
-                        ]
-                    ),
                 },
+                # {
+                #     "python_pc_type": "gamg",
+                #     "python_pc_gamg_threshold": NumericalChoices(
+                #         [-1, 0, 0.2, 0.5, 0.7]
+                #     ),
+                #     "python_pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                #     "python_pc_gamg_aggressive_coarsening": NumericalChoices([1, 2]),
+                #     "python_pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
+                #     "python_mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
+                # },
             ]
         ),
     }
@@ -100,32 +105,55 @@ def make_solver_space_scheme_fthm(nd: int):
                 "fieldsplit_options": {
                     "pc_fieldsplit_type": "additive",
                 },
-                "elim_options": {
-                    "pc_type": "hypre",
-                    "pc_hypre_type": "boomeramg",
-                    "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                        [
-                            # 0.5,
-                            # 0.7,
-                            0.9,
-                        ]
-                    ),
-                    "pc_hypre_boomeramg_agg_nl": NumericalChoices(
-                        [
-                            # 0,
-                            # 1,
-                            2,
-                        ]
-                    ),
-                    "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
-                        [
-                            "symmetric-SOR/Jacobi",
-                            # "l1scaled-Jacobi",
-                            # "SOR/Jacobi",
-                            # "Jacobi",
-                        ]
-                    ),
-                },
+                "elim_options": CategoricalChoices(
+                    [
+                        {
+                            "pc_type": "hypre",
+                            "pc_hypre_type": "boomeramg",
+                            "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
+                                [0.5, 0.6, 0.7, 0.8, 0.9]
+                            ),
+                            "pc_hypre_boomeramg_P_max": 16,
+                            "pc_hypre_boomeramg_agg_nl": NumericalChoices(
+                                [
+                                    0,
+                                    1,
+                                ]
+                            ),
+                            "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
+                                [
+                                    # "symmetric-SOR/Jacobi",
+                                    # "l1scaled-Jacobi",
+                                    "SOR/Jacobi",
+                                    "Jacobi",
+                                ]
+                            ),
+                            "pc_hypre_boomeramg_cycle_type": CategoricalChoices(
+                                [
+                                    "V",
+                                    "W",
+                                ]
+                            ),
+                            "pc_hypre_boomeramg_grid_sweeps_all": NumericalChoices(
+                                [
+                                    1,
+                                    2,
+                                    # 3,
+                                ]
+                            ),
+                        },
+                        # {
+                        #     "pc_type": "gamg",
+                        #     "pc_gamg_threshold": NumericalChoices(
+                        #         [-1, 0, 0.2, 0.5, 0.7]
+                        #     ),
+                        #     "pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                        #     "pc_gamg_aggressive_coarsening": NumericalChoices([1, 2]),
+                        #     "pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
+                        #     "mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
+                        # },
+                    ]
+                ),
                 "complement": {
                     "block_type": "PetscFieldSplitScheme",
                     "groups": temp,
@@ -154,8 +182,8 @@ def make_solver_space_scheme_fthm(nd: int):
                     "python_pc_type": CategoricalChoices(
                         [
                             "ilu",
-                            "sor",
-                            "pbjacobi",
+                            # "sor",
+                            # "pbjacobi",
                         ]
                     ),
                 },
@@ -171,13 +199,7 @@ def make_solver_space_scheme_fthm(nd: int):
             "petsc_options": {
                 "ksp_monitor": None,
                 "ksp_rtol": 1e-12,
-                "ksp_gmres_restart": NumericalChoices(
-                    [
-                        # 10,
-                        30,
-                        50,
-                    ]
-                ),
+                "ksp_gmres_restart": NumericalChoices([100]),
             },
             "compute_eigenvalues": False,
             "preconditioner": {
@@ -211,38 +233,39 @@ def make_solver_space_scheme_fthm(nd: int):
                                     "pc_type": "hypre",
                                     "pc_hypre_type": "boomeramg",
                                     "pc_hypre_boomeramg_strong_threshold": NumericalChoices(
-                                        [
-                                            0.5,
-                                            0.7,
-                                            0.9,
-                                        ]
+                                        [0.5, 0.6, 0.7, 0.8, 0.9]
                                     ),
+                                    "pc_hypre_boomeramg_P_max": 16,
                                     "pc_hypre_boomeramg_agg_nl": NumericalChoices(
-                                        [
-                                            0,
-                                            1,
-                                            2,
-                                        ]
+                                        [0, 1]
                                     ),
                                     "pc_hypre_boomeramg_relax_type_all": CategoricalChoices(
                                         [
-                                            "symmetric-SOR/Jacobi",
-                                            "l1scaled-Jacobi",
+                                            # "symmetric-SOR/Jacobi",
+                                            # "l1scaled-Jacobi",
                                             "SOR/Jacobi",
                                             "Jacobi",
                                         ]
                                     ),
-                                },
-                                {
-                                    "pc_type": "gamg",
-                                    "pc_gamg_threshold": NumericalChoices(
-                                        [-1, 0, 0.2, 0.5, 0.7]
+                                    "pc_hypre_boomeramg_cycle_type": CategoricalChoices(
+                                        ["V", "W"]
                                     ),
-                                    "pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
-                                    "pc_gamg_aggressive_coarsening": NumericalChoices(
+                                    "pc_hypre_boomeramg_grid_sweeps_all": NumericalChoices(
                                         [1, 2]
                                     ),
                                 },
+                                # {
+                                #     "pc_type": "gamg",
+                                #     "pc_gamg_threshold": NumericalChoices(
+                                #         [-1, 0, 0.2, 0.5, 0.7]
+                                #     ),
+                                #     "pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                                #     "pc_gamg_aggressive_coarsening": NumericalChoices(
+                                #         [1, 2]
+                                #     ),
+                                #     "pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
+                                #     "mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
+                                # },
                             ]
                         ),
                         "block_size": nd,
@@ -287,17 +310,17 @@ if __name__ == "__main__":
         np.random.permutation(len(outlet_placements)) for i in range(NUM_RUNS)
     ]
 
-    IDX_START = 30
-    solver_space_scheme = make_solver_space_scheme_fthm(nd=3)
+    IDX_START = 100
 
     counter = 0
     for run_idx in range(IDX_START, IDX_START + NUM_RUNS):
-        counter += 1
-        if counter <= 1:
-            continue
+        # counter += 1
+        # if counter <= 4:
+        #     continue
 
         print("Starting run", run_idx)
 
+        solver_space_scheme = make_solver_space_scheme_fthm(nd=3)
         with open(f"stats/thm_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
             pickle.dump(solver_space_scheme, f)
         with open(f"stats/thm_permutations_{run_idx}.pkl", "wb") as f:
