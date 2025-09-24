@@ -11,9 +11,14 @@ import numpy as np
 import pandas as pd
 from load_experiments_data import load_experiments_data_spe, load_experiments_data_thm
 from sklearn.base import BaseEstimator, RegressorMixin, clone
-from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.dummy import DummyClassifier
-from sklearn.linear_model import PassiveAggressiveRegressor, RidgeCV, RidgeClassifier, Ridge
+from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.linear_model import (
+    PassiveAggressiveRegressor,
+    Ridge,
+    RidgeClassifier,
+    RidgeCV,
+)
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -31,16 +36,10 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-from solver_selection_thm.performance_predictor import (
-    RewardRegressor,
-    SuccessClassifier,
-)
-
 
 def make_pandas(sim_data, perf_data, seq_ids):
     sim_data_dict = defaultdict(lambda: [])
     perf_data_dict = defaultdict(lambda: [])
-    i = 0
     for seq_id, data_simulations, solver_selection_history_seq in zip(
         seq_ids, sim_data, perf_data
     ):
@@ -61,29 +60,34 @@ def make_pandas(sim_data, perf_data, seq_ids):
                             ls.petsc_converged_reason
                         )
                         sim_data_dict["cfl"].append(ls.cfl)
+                        sim_data_dict["simulation_dt"].append(ls.simulation_dt)
+                        sim_data_dict["enthalpy_max"].append(ls.enthalpy_max)
+                        sim_data_dict["enthalpy_mean"].append(ls.enthalpy_mean)
+                        sim_data_dict["fourier_max"].append(ls.fourier_max)
+                        sim_data_dict["fourier_mean"].append(ls.fourier_mean)
 
-        solver_selection_history = None
-        for x in solver_selection_history_seq:
-            if x is not None:
-                solver_selection_history = x
+        # they store the data incrementally (second has what first has and more)
+        offset = 0
+    
+        for sim_idx, solver_selection_history in enumerate(
+            solver_selection_history_seq
+        ):
+            num_data = len(solver_selection_history.reward) - offset
+            perf_data_dict["seq_id"].extend([seq_id] * num_data)
+            perf_data_dict["sim_idx"].extend([sim_idx] * num_data)
+            perf_data_dict["reward"].extend(solver_selection_history.reward[-num_data:])
+            perf_data_dict["expectation"].extend(
+                solver_selection_history.expectation[-num_data:]
+            )
+            perf_data_dict["decision_idx"].extend(
+                solver_selection_history.decision_idx[-num_data:]
+            )
+            perf_data_dict["features"].extend(
+                solver_selection_history.features[-num_data:]
+            )
 
-        for reward_idx in range(len(solver_selection_history.reward)):
-            # if solver_selection_history.features[reward_idx][5] > 1e10 or solver_selection_history.features[reward_idx][4] > 1e10:
-            #     i += 1
-            #     print('dropping large', i)
-            #     continue
-            perf_data_dict["seq_id"].append(seq_id)
-            perf_data_dict["sim_idx"].append(sim_idx)
-            perf_data_dict["reward"].append(solver_selection_history.reward[reward_idx])
-            perf_data_dict["expectation"].append(
-                solver_selection_history.expectation[reward_idx]
-            )
-            perf_data_dict["decision_idx"].append(
-                solver_selection_history.decision_idx[reward_idx]
-            )
-            perf_data_dict["features"].append(
-                solver_selection_history.features[reward_idx]
-            )
+            offset += num_data
+
     return pd.DataFrame(data=sim_data_dict), pd.DataFrame(data=perf_data_dict)
 
 
@@ -166,7 +170,6 @@ class EpsGreedyExplorationModel:
         self.model = model
         self.eps = eps
         self.eps1 = eps1
-        np.random.seed(42)
 
     def fit(self, X, y):
         self.model.fit(X, y)
@@ -240,8 +243,9 @@ def do_experiment(
     one_decision = experiment_setup["one_decision"]
     seq_id = experiment_setup["seq_id"]
     gamma = experiment_setup["gamma"]
-    gamma1 = experiment_setup['gamma1']
+    gamma1 = experiment_setup["gamma1"]
     assert (gamma + gamma1) < 1
+    assert gamma <= gamma1
     eps = experiment_setup["eps"]
     batch_size = experiment_setup["batch_size"]
     eps1 = 0.9
@@ -263,7 +267,7 @@ def do_experiment(
 
     filter_ = np.array((df_perf.seq_id == seq_id))
     X_ranking = X[filter_]
-    y_ranking = y[filter_]
+    # y_ranking = y[filter_]
 
     np.random.seed(experiment_idx)
     # perm = np.random.permutation(y_ranking.size)
@@ -271,12 +275,12 @@ def do_experiment(
     # y_ranking = y_ranking[perm]
 
     num_offline = int(num_solvers * gamma)
-    num_online = num_solvers
+    num_online = int(num_solvers * gamma1)
 
     # X_online, X_offline, y_online, y_offline = train_test_split(X_ranking, y_ranking, test_size=num_offline, random_state=experiment_idx)
 
     X_offline = X_ranking[:num_offline]
-    y_offline = y_ranking[:num_offline]
+    # y_offline = y_ranking[:num_offline]
     X_online = X_ranking[num_online:]
     # y_online = y_ranking[num_online:]
 
@@ -390,8 +394,6 @@ def do_experiment(
     return data_for_pandas
 
 
-
-
 def neg_mae_success(y_true, y_pred, failure_threshold=FAIL_REWARD):
     mask = (y_true > failure_threshold) & (y_pred > failure_threshold)
     if not np.any(mask):
@@ -412,8 +414,6 @@ def acc_failure(y_true, y_pred, failure_threshold=FAIL_REWARD):
 
 def f1_failure(y_true, y_pred, failure_threshold=FAIL_REWARD):
     return f1_score(y_true <= failure_threshold, y_pred <= failure_threshold)
-
-
 
 
 def score_oracle(load_experiments_data: callable, all_run_ids: list, n_jobs=-1):
@@ -438,7 +438,6 @@ def score_oracle(load_experiments_data: callable, all_run_ids: list, n_jobs=-1):
         regressor=GradientBoostingRegressor(random_state=42),
     )
 
-
     scoring = {
         "mae_success": make_scorer(neg_mae_success),
         "r2_success": make_scorer(r2_success),
@@ -456,6 +455,11 @@ def score_oracle(load_experiments_data: callable, all_run_ids: list, n_jobs=-1):
         return_estimator=True,
         n_jobs=n_jobs,
     )
+    cv_results |= {
+        "success_rate": np.sum(y <= -100) / y.size,
+        "y_std": y[y > -100].std(),
+        "y_mean": y[y > -100].mean(),
+    }
     return cv_results, scoring
 
 

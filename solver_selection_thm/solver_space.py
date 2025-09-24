@@ -176,7 +176,6 @@ def build_decision_tree(
 def make_choices_map(
     solver_space: list[FlatSolverDecision],
 ) -> tuple[int, int]:
-    
     # At this stage, the ids must be uninitialized. We ensure it here.
     for solver in solver_space:
         for choice in solver.categorical:
@@ -325,69 +324,90 @@ class SolverSpace:
         )
 
 
-# def explain_decision(solver_space: SolverSpace, decision_idx: int) -> str:
-#     id_ = -1
-#     if decision_idx < solver_space.num_category_choices:
-#         is_categorical = True
-#         for id_, idx in solver_space.category_choices_map.items():
-#             if idx == decision_idx:
-#                 id_ = id_
-#                 break
-#     elif decision_idx < (
-#         solver_space.num_category_choices + solver_space.num_numerical_choices
-#     ):
-#         decision_idx -= solver_space.num_category_choices
-#         is_categorical = False
-#         for id_, idx in solver_space.numerical_choices_map.items():
-#             if idx == decision_idx:
-#                 id_ = id_
-#                 break
-#     else:
-#         raise IndexError(f"{decision_idx} is out of bounds.")
-#     assert id_ != -1, "This should never happen"
+def explain_decision(
+    solver_space: SolverSpace, decision_idx: int, sep=" - ", include_ids: bool = False
+) -> tuple[str, list]:
+    if decision_idx < solver_space.num_category_choices:
+        is_categorical = True
+    elif decision_idx < (
+        solver_space.num_category_choices + solver_space.num_numerical_choices
+    ):
+        decision_idx -= solver_space.num_category_choices
+        is_categorical = False
+    else:
+        raise IndexError(f"{decision_idx} is out of bounds.")
 
-#     def get_node_name(node: DecisionNode):
-#         if isinstance(node.solver_space_scheme, dict):
-#             if "block_type" in node.solver_space_scheme:
-#                 return node.solver_space_scheme["block_type"]
-#             else:
-#                 return next(iter(node.solver_space_scheme.values()))
-#         else:
-#             return str(node.solver_space_scheme)
+    def render_name(node: DecisionNode | NumericalChoices) -> str:
+        if isinstance(node, DecisionNode):
+            name = get_node_name(node)
+        else:
+            name = node.tag
+        if include_ids:
+            return f"({node.id}){name}"
+        return name
 
-#     def find_categorical_child(node, prefix: list):
-#         for child in node.children:
-#             if isinstance(child, DecisionNode):
-#                 prefix.append(get_node_name(child))
-#             if id(child) == id_:
-#                 return True
-#             if find_categorical_child(child, prefix):
-#                 return True
-#             if isinstance(child, DecisionNode):
-#                 prefix.pop()
+    def get_node_name(node: DecisionNode):
+        if isinstance(node.solver_space_scheme, dict):
+            if "block_type" in node.solver_space_scheme:
+                return node.solver_space_scheme["block_type"]
+            else:
+                return next(iter(node.solver_space_scheme.values()))
+        else:
+            return str(node.solver_space_scheme)
 
-#         return False
+    def find_categorical_child(node, prefix: list):
+        for child in node.children:
+            if isinstance(child, DecisionNode):
+                prefix.append(render_name(child))
+                if child.id == decision_idx:
+                    ranges.extend([True, False])
+                    return True
+            if find_categorical_child(child, prefix):
+                return True
+            if isinstance(child, DecisionNode):
+                prefix.pop()
 
-#     def find_numerical_child(node, prefix: list):
-#         if isinstance(node, DecisionNode):
-#             prefix.append(get_node_name(node))
-#             for num_decision in node.numerical_choices:
-#                 if id(num_decision) == id_:
-#                     prefix.append(num_decision.tag)
-#                     return True
-#         for child in node.children:
-#             if find_numerical_child(child, prefix):
-#                 return True
+        return False
 
-#         if isinstance(node, DecisionNode):
-#             prefix.pop()
+    def find_numerical_child(node, prefix: list):
+        if isinstance(node, DecisionNode):
+            prefix.append(render_name(node))
+            for num_decision in node.numerical_choices:
+                if num_decision.id == decision_idx:
+                    prefix.append(render_name(num_decision))
+                    ranges.extend(num_decision.choices)
+                    return True
+        for child in node.children:
+            if find_numerical_child(child, prefix):
+                return True
 
-#         return False
+        if isinstance(node, DecisionNode):
+            prefix.pop()
 
-#     prefix = []
-#     if is_categorical:
-#         assert find_categorical_child(solver_space.decision_tree, prefix)
-#     else:
-#         assert find_numerical_child(solver_space.decision_tree, prefix)
+        return False
 
-#     return "-".join(prefix)
+    prefix = []
+    ranges = []
+    if is_categorical:
+        assert find_categorical_child(solver_space.decision_tree, prefix)
+    else:
+        assert find_numerical_child(solver_space.decision_tree, prefix)
+
+    return sep.join(prefix), ranges
+
+
+def explain_decisions(solver_space: SolverSpace, include_ids: bool = False):
+    decision_names = []
+    decision_ranges = []
+    for i in range(solver_space.num_category_choices):
+        a, b = explain_decision(solver_space, i, include_ids=include_ids)
+        decision_names.append(a)
+        decision_ranges.append(b)
+
+    for i in range(solver_space.num_numerical_choices):
+        a, b = explain_decision(
+            solver_space, i + solver_space.num_category_choices, include_ids=include_ids
+        )
+        decision_names.append(a)
+        decision_ranges.append(b)
+    return decision_names, decision_ranges

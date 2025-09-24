@@ -1,10 +1,16 @@
 import numpy as np
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import SGDRegressor
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler, RobustScaler
-from sklearn.linear_model import PassiveAggressiveRegressor
+from sklearn.linear_model import (
+    LogisticRegression,
+    PassiveAggressiveRegressor,
+    SGDClassifier,
+    SGDRegressor,
+)
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.preprocessing import PolynomialFeatures, RobustScaler, StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 
 
 class OnlineSGDRegressor:
@@ -166,12 +172,7 @@ class PerformancePredictorPassiveAgressive:
             # )
 
 
-from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression, SGDRegressor
-from sklearn.linear_model import SGDClassifier
-from sklearn.utils.class_weight import compute_class_weight
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
+
 
 
 class SuccessClassifier(ClassifierMixin, BaseEstimator):
@@ -259,6 +260,50 @@ class PerformancePredictorRandom:
         success: bool,
     ):
         pass
+
+
+class InitialExplorationEstimator:
+
+    def __init__(self, model, num_initial_exploration: int, batch_size: int):
+        self.model = model
+        self.num_initial_exploration: int = num_initial_exploration
+        self.batch_size: int = batch_size
+        self.X_history = []
+        self.y_history = []
+        self.is_ready_to_predict = False
+        self.exploration_expectation = 100
+        self.reward_maker = RewardEstimator()
+
+    def select_solver(self, features: np.ndarray) -> tuple[int, float, bool]:
+        if not self.is_ready_to_predict:
+            return np.random.randint(features.shape[0]), self.exploration_expectation, False
+            
+        expectations = self.model.predict(features)
+        argmax = int(np.argmax(expectations))
+        expectation = float(expectations[argmax])
+        return argmax, expectation, True
+
+    def partial_fit(
+        self,
+        features: np.ndarray,
+        solve_time: float,
+        construct_time: float,
+        success: bool,
+    ):
+        reward = self.reward_maker.estimate_reward(solve_time, construct_time, success)
+        self.X_history.append(features)
+        self.y_history.append(reward)
+        if not self.is_ready_to_predict and len(self.y_history) >= self.num_initial_exploration:
+            self.model.fit(np.array(self.X_history), np.array(self.y_history))
+            self.is_ready_to_predict = True
+            self.X_history.clear()
+            self.y_history.clear()
+
+        if self.is_ready_to_predict and len(self.y_history) >= self.batch_size:
+            self.model.partial_fit(np.array(self.X_history), np.array(self.y_history))
+            self.X_history.clear()
+            self.y_history.clear()
+
 
 
 class Estimator:
@@ -370,3 +415,5 @@ def concatenate_characteristics_solvers(
         characteristics, (solvers.shape[0], characteristics.size)
     )
     return np.concatenate([characteristics, solver_reused_flag, solvers], axis=1)
+
+
