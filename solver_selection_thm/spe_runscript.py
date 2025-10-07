@@ -44,6 +44,7 @@ from stats import StatisticsSavingMixin
 
 class ModelSPEWithSelector(StatisticsSavingMixin, SolverSelectionMixinTH, SPE10Model):
     pass
+
     def data_to_export(self):
         data = super().data_to_export()
         sds = self.mdg.subdomains()
@@ -114,13 +115,12 @@ def make_solver_space_scheme_hm(nd: int):
                 },
                 {
                     "python_pc_type": "gamg",
-                    "python_pc_gamg_threshold": NumericalChoices(
-                        [-1, 0, 0.2, 0.5, 0.7]
-                    ),
-                    "python_pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                    "python_pc_gamg_threshold": NumericalChoices([0, 0.01, 0.05, 0.1]),
+                    "python_pc_gamg_agg_nsmooths": NumericalChoices([0, 1]),
                     "python_pc_gamg_aggressive_coarsening": NumericalChoices([1, 2]),
                     "python_pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
-                    "python_mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
+                    "python_mg_levels_ksp_max_it": NumericalChoices([1, 2, 4]),
+                    "python_mg_levels_pc_type": CategoricalChoices(["sor", "pbjacobi"]),
                 },
             ]
         ),
@@ -162,13 +162,14 @@ def make_solver_space_scheme_hm(nd: int):
                         },
                         {
                             "pc_type": "gamg",
-                            "pc_gamg_threshold": NumericalChoices(
-                                [-1, 0, 0.2, 0.5, 0.7]
-                            ),
-                            "pc_gamg_agg_nsmooths": NumericalChoices([1, 2]),
+                            "pc_gamg_threshold": NumericalChoices([0, 0.01, 0.05, 0.1]),
+                            "pc_gamg_agg_nsmooths": NumericalChoices([0, 1]),
                             "pc_gamg_aggressive_coarsening": NumericalChoices([1, 2]),
                             "pc_mg_cycle_type": CategoricalChoices(["V", "W"]),
-                            "mg_levels_ksp_max_it": NumericalChoices([1, 2, 3]),
+                            "mg_levels_ksp_max_it": NumericalChoices([1, 2, 4]),
+                            "mg_levels_pc_type": CategoricalChoices(
+                                ["sor", "pbjacobi"]
+                            ),
                         },
                     ]
                 ),
@@ -238,16 +239,16 @@ if __name__ == "__main__":
     import pickle
 
     NUM_RUNS = 5
-    IDX_START = 100
+    IDX_START = 200
     if len(sys.argv) == 3:
         run_idx = IDX_START + int(sys.argv[1])
-        CASE: Literal["solver_selection", "random", "expert", 'tmp'] = sys.argv[2]
+        CASE: Literal["solver_selection", "random", "expert", "tmp"] = sys.argv[2]
     else:
         print(
             'Command line arguments: run_index (int), case ("solver_selection", "random", "expert")'
         )
         run_idx = IDX_START
-        CASE = 'tmp'
+        CASE = "tmp"
 
     np.random.seed(run_idx)
     Z_SLICES = np.array(Z_SLICES)
@@ -255,7 +256,6 @@ if __name__ == "__main__":
     permutations_z = [np.random.permutation(len(Z_SLICES)) for i in range(5)]
     permutations_x = [np.random.permutation(len(X_SLICES)) for i in range(5)]
     solver_space_scheme = make_solver_space_scheme_hm(nd=3)
-
 
     print("Starting run", run_idx, CASE)
 
@@ -298,7 +298,7 @@ if __name__ == "__main__":
                 ),
             ),
         )
-    elif CASE in ["expert", 'tmp']:
+    elif CASE in ["expert", "tmp"]:
         performance_predictor = InitialExplorationEstimator(
             num_initial_exploration=64,
             batch_size=64,
@@ -315,7 +315,7 @@ if __name__ == "__main__":
                 ),
             ),
         )
-        offline_runs = [100, 101, 102, 103, 104]
+        offline_runs = [200, 201, 202, 203, 204]
         sim_data_random, perf_data_random, _ = load_experiments_data_spe(
             runs=offline_runs, case="random", dir="./stats/"
         )
@@ -361,8 +361,8 @@ if __name__ == "__main__":
                 pass  # do nothing
             elif CASE == "expert":
                 sim_name = f"EXPERT_{sim_name}"
-            elif CASE == 'tmp':
-                sim_name = f"TMP_{sim_name}"    
+            elif CASE == "tmp":
+                sim_name = f"TMP_{sim_name}"
             else:
                 raise ValueError(CASE)
             params["folder_name"] = sim_name

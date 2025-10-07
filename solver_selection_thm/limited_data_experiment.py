@@ -68,7 +68,7 @@ def make_pandas(sim_data, perf_data, seq_ids):
 
         # they store the data incrementally (second has what first has and more)
         offset = 0
-    
+
         for sim_idx, solver_selection_history in enumerate(
             solver_selection_history_seq
         ):
@@ -85,7 +85,12 @@ def make_pandas(sim_data, perf_data, seq_ids):
             perf_data_dict["features"].extend(
                 solver_selection_history.features[-num_data:]
             )
-
+            perf_data_dict["predict_time"].extend(
+                solver_selection_history.predict_time[-num_data:]
+            )
+            perf_data_dict["fit_time"].extend(
+                solver_selection_history.fit_time[-num_data:]
+            )
             offset += num_data
 
     return pd.DataFrame(data=sim_data_dict), pd.DataFrame(data=perf_data_dict)

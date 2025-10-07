@@ -314,7 +314,7 @@ if __name__ == "__main__":
     import pickle
 
     NUM_RUNS = 5
-    IDX_START = 100
+    IDX_START = 200
 
 
     if len(sys.argv) == 3:
@@ -394,7 +394,7 @@ if __name__ == "__main__":
                 ),
             ),
         )
-        offline_runs = [100, 101, 102, 103, 104]
+        offline_runs = [200, 201, 202, 203, 204]
         sim_data_random, perf_data_random, _ = load_experiments_data_thm(
             runs=offline_runs, case="random", dir="./stats/"
         )
@@ -446,6 +446,7 @@ if __name__ == "__main__":
 
             try:
                 model = ModelTHMWithSelector(params)
+                print(model.simulation_name())
                 model.prepare_simulation()
 
                 print("Initialising")
