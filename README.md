@@ -28,20 +28,26 @@ To reproduce the experiments, PETSc, PorePy and all their dependencies must be i
 When Docker is installed and running, download [the image of this repository](todo). Note that it is a few GBs. 
 To start a *docker container* based on this image, navigate to the folder you've downloaded it and run these terminal commands:
 ```
-docker load -i fhm_solver.tar.gz
-docker run -it --name fhm_solver fhm_solver:latest
-docker exec -it fhm_solver /bin/bash
+docker load -i solver_selection_thm.tar.gz
+docker run -dit --name solver_selection_thm solver_selection_thm:latest
+docker exec -it solver_selection_thm /bin/bash
 ```
 
 Please don't forget to pull the recent changes with `git pull`.
 
 For the graphical user interface, it is recommended to use [VSCode](https://code.visualstudio.com/) and attach to the running container, following [the official instruction](https://code.visualstudio.com/docs/devcontainers/attach-container).
 
+The repository root folder is located at `/home/porepy/solver_selection_thm` in the *docker container* file system.
+
+The numerical experiments are tested using PorePy commit `65199b1a609af269d3a44204a06f8c97f3891d65` and PETSc commit `bff66efa9044f546ae447ed195723e21295eb6dd`, which are shipped in the *docker container*, you don't need to switch them.
+
 ## Step 2. Accessing the data of our numerical experiments
 
 The data of the experiments, used to generate figures and tables for the publications are commited to the [stats/](stats/) folder. You can see the datasets in Pandas and re-generate the figures and the tables using these jupyter notebooks:
 - Sequence A - coupled flow and heat transport: [solver_selection_thm/spe_results.ipynb](solver_selection_thm/spe_results.ipynb);
 - Sequence B - contact-THM: [solver_selection_thm/thm_results.ipynb](solver_selection_thm/thm_results.ipynb).
+
+It may take a few minutes to run the notebooks for the first time, as `Numba` needs to compile within `PorePy`.
 
 ## Step 3. Re-running the numerical experiments
 
