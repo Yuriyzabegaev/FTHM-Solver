@@ -87,3 +87,7 @@ python solver_selection_thm/thm_runscript.py 0 expert  # Sequence B
 ```
 
 When the experiments are complete, you can return to [Step 2](README.md#step-2-accessing-the-data-of-our-numerical-experiments) to visualize and analyse the data.
+
+# Acknowledgement
+
+This project has received funding from the VISTA program, The Norwegian Academy of Science and Letters and Equinor and from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation program (grant agreement No 101002507).
