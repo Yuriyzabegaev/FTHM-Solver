@@ -23,12 +23,13 @@ Here you can find the information on how to:
 
 ## Step 1. Installation
 
-To reproduce the experiments, PETSc, PorePy and all their dependencies must be installey. To skip this tedious process, it is highly recommended to use [Docker](https://www.docker.com/). We provide a *docker image*, which has all the needed dependencies packed into it and ensures reproducibility of the experiments. You need to install Docker following [the official instruction](https://www.docker.com/get-started/).
+To reproduce the experiments, PETSc, PorePy and all their dependencies must be installey. To skip this tedious process, it is highly recommended to use [Docker](https://www.docker.com/). We provide a *docker image*, which has all the needed dependencies packed into it and ensures reproducibility of the experiments. You need to install Docker following [the official instruction](https://www.docker.com/get-started/). The instructions below are *hopefully* agnostic to the operation system, but were tested on Windows 11 with Windows Subsystem for Linux 2 (WSL 2) installed.
 
-When Docker is installed and running, download [the image of this repository](todo). Note that it is a few GBs. 
+
+When Docker is installed and running, download [the image of this repository](todo). Note that it is a few gigabytes. 
 To start a *docker container* based on this image, navigate to the folder you've downloaded it and run these terminal commands:
 ```
-docker load -i solver_selection_thm.tar.gz
+docker load -i solver_selection_thm.tar.gz   # This may take a few minutes
 docker run -dit --name solver_selection_thm solver_selection_thm:latest
 docker exec -it solver_selection_thm /bin/bash
 ```
@@ -39,7 +40,7 @@ For the graphical user interface, it is recommended to use [VSCode](https://code
 
 The repository root folder is located at `/home/porepy/solver_selection_thm` in the *docker container* file system.
 
-The numerical experiments are tested using PorePy commit `65199b1a609af269d3a44204a06f8c97f3891d65` and PETSc commit `bff66efa9044f546ae447ed195723e21295eb6dd`, which are shipped in the *docker container*, you don't need to switch them.
+The numerical experiments are tested using `Python 3.11.7`, PorePy commit `65199b1a609af269d3a44204a06f8c97f3891d65` and PETSc commit `bff66efa9044f546ae447ed195723e21295eb6dd`. All the other dependencies are listed in [requirements.txt](requirements.txt). The *docker container* has the correct versions pre-installed, so you don't need to do anything else.
 
 ## Step 2. Accessing the data of our numerical experiments
 
