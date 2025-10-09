@@ -5,10 +5,17 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import RidgeClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from plot_utils import load_data
 from solver_selection_thm.performance_predictor import (
-    PerformancePredictorPassiveAgressive,
+    EpsGreedyExplorationModel,
+    IncrementalRefitModel,
+    InitialExplorationEstimator,
+    TwoEstimators,
 )
 from solver_selection_thm.pp_binding import KNOWN_SOLVER_COMPONENTS_THM
 from solver_selection_thm.selector import SolverSelector
@@ -42,11 +49,24 @@ def load_experiments_data_thm(
             solver_space_scheme=solver_space_scheme,
             solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
         )
-        num_solvers = len(solver_space.all_decisions_encoding)
+        # num_solvers = len(solver_space.all_decisions_encoding)
         # print("Num solvers:", num_solvers)
 
-        performance_predictor = PerformancePredictorPassiveAgressive(
-            num_solvers=num_solvers,
+        performance_predictor = InitialExplorationEstimator(
+            num_initial_exploration=64,
+            batch_size=64,
+            model=EpsGreedyExplorationModel(
+                eps=0,
+                eps1=0.9,
+                model=TwoEstimators(
+                    classifier=IncrementalRefitModel(
+                        model=make_pipeline(StandardScaler(), RidgeClassifier())
+                    ),
+                    regressor=IncrementalRefitModel(
+                        model=GradientBoostingRegressor(random_state=run_idx)
+                    ),
+                ),
+            ),
         )
         solver_selector = SolverSelector(
             solver_space=solver_space,
@@ -98,9 +118,12 @@ def load_experiments_data_spe(
     solver_selection_history_common = []
 
     for run_idx in runs:
-        with open(f"{dir}spe_solver_space_scheme_run_{run_idx}.pkl", "rb") as f:
-            solver_space_scheme = pickle.load(f)
-
+        try:
+            with open(f"{dir}spe_solver_space_scheme_run_{run_idx}.pkl", "rb") as f:
+                solver_space_scheme = pickle.load(f)
+        except FileNotFoundError:
+            print(f"Was not able to load experiment {run_idx}, skipping it.")
+            continue
         # Load permutations
         with open(f"{dir}spe_permutations_{run_idx}.pkl", "rb") as f:
             permutations = pickle.load(f)
@@ -111,11 +134,24 @@ def load_experiments_data_spe(
             solver_space_scheme=solver_space_scheme,
             solver_scheme_builders=KNOWN_SOLVER_COMPONENTS_THM,
         )
-        num_solvers = len(solver_space.all_decisions_encoding)
+        # num_solvers = len(solver_space.all_decisions_encoding)
         # print("Num solvers:", num_solvers)
 
-        performance_predictor = PerformancePredictorPassiveAgressive(
-            num_solvers=num_solvers,
+        performance_predictor = InitialExplorationEstimator(
+            num_initial_exploration=64,
+            batch_size=64,
+            model=EpsGreedyExplorationModel(
+                eps=0,
+                eps1=0.9,
+                model=TwoEstimators(
+                    classifier=IncrementalRefitModel(
+                        model=make_pipeline(StandardScaler(), RidgeClassifier())
+                    ),
+                    regressor=IncrementalRefitModel(
+                        model=GradientBoostingRegressor(random_state=run_idx)
+                    ),
+                ),
+            ),
         )
         solver_selector = SolverSelector(
             solver_space=solver_space,
