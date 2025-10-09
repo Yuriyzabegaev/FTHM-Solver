@@ -48,7 +48,7 @@ The data of the experiments, used to generate figures and tables for the publica
 - Sequence A - coupled flow and heat transport: [solver_selection_thm/spe_results.ipynb](solver_selection_thm/spe_results.ipynb);
 - Sequence B - contact-THM: [solver_selection_thm/thm_results.ipynb](solver_selection_thm/thm_results.ipynb).
 
-It may take a few minutes to run the notebooks for the first time, as `Numba` needs to compile within `PorePy`.
+It may take a few minutes to run the notebooks for the first time, as `Numba` needs to compile within `PorePy`. After that, running the notebooks typically takes seconds.
 
 If you are experiencing problems with jupyter notebooks, the same can be done in python files (navigate to the directory `solver_selection_thm/` before running them):
 - [solver_selection_thm/spe_results.py](solver_selection_thm/spe_results.py): `cd solver_selection_thm; python spe_results.py`
@@ -76,14 +76,16 @@ You can instead run the experiments selectively. To run the experiments for Sequ
 python solver_selection_thm/spe_runscript.py 0 random            # section 6.1 experiment
 python solver_selection_thm/spe_runscript.py 0 solver_selection  # section 6.2 experiment
 ```
-The first command-line argument takes a value from 0 to 4 to account for the repetition index. This takes about 2.5 hours on our machine.
+The first command-line argument takes a value from 0 to 4 to account for the repetition index. 
+
+The commands above take about 2.5 hours on our machine.
 
 For Sequence B, use these commands from the root folder of this repository:
  ```
 python solver_selection_thm/thm_runscript.py 0 random            # section 6.1 experiment
 python solver_selection_thm/thm_runscript.py 0 solver_selection  # section 6.2 experiment
 ```
-Sequence B takes about 10 hours on our machine and its peak memory consumption is ~20 GBs.
+The commands above take about 10 hours on our machine and its peak memory consumption is ~20 GBs. We recommend running only Sequence A if your machine has less RAM.
 
 The experiments in Section 6.3 are based on the data, previously collected in Sections 6.1 and 6.2, so you need to restore our data with git, if you have deleted it before. Use the following commands from the root folder of this repository to run them:
 ```
