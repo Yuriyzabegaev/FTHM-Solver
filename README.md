@@ -55,7 +55,7 @@ If you want re-run the simulations, we recommend you to delete the contents of t
 
 To run all the simulations from the paper, use the following command from the root folder of this repository:
 ```
-sh solver_selection_thm/runscript.sh
+bash solver_selection_thm/runscript.sh
 ```
 It will run the following experiments:
 - Random selection experiment (Section 6.1 in the paper);

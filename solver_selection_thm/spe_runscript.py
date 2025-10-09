@@ -1,5 +1,6 @@
 import sys
 import traceback
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -235,6 +236,8 @@ def make_solver_space_scheme_hm(nd: int):
 
 
 if __name__ == "__main__":
+    Path("stats/").mkdir(exist_ok=True)
+
     import pickle
 
     NUM_RUNS = 5
