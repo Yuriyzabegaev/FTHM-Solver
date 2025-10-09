@@ -50,8 +50,8 @@ The data of the experiments, used to generate figures and tables for the publica
 It may take a few minutes to run the notebooks for the first time, as `Numba` needs to compile within `PorePy`.
 
 If you are experiencing problems with jupyter notebooks, the same can be done in python files:
-- [solver_selection_thm/spe_results.py](solver_selection_thm/spe_results.py);
-- [solver_selection_thm/thm_results.py](solver_selection_thm/thm_results.py).
+- [solver_selection_thm/spe_results.py](solver_selection_thm/spe_results.py): `python solver_selection_thm/spe_results.py`
+- [solver_selection_thm/thm_results.py](solver_selection_thm/thm_results.py): `python solver_selection_thm/thm_results.py`
 
 ## Step 3. Re-running the numerical experiments
 
