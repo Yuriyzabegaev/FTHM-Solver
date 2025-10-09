@@ -43,11 +43,15 @@ The numerical experiments are tested using PorePy commit `65199b1a609af269d3a442
 
 ## Step 2. Accessing the data of our numerical experiments
 
-The data of the experiments, used to generate figures and tables for the publications are commited to the [stats/](stats/) folder. You can see the datasets in Pandas and re-generate the figures and the tables using these jupyter notebooks:
+The data of the experiments, used to generate figures and tables for the publications are commited to the [stats/](stats/) folder. You can see the numerical experiment datasets in Pandas and reproduce the figures and the tables using these jupyter notebooks:
 - Sequence A - coupled flow and heat transport: [solver_selection_thm/spe_results.ipynb](solver_selection_thm/spe_results.ipynb);
 - Sequence B - contact-THM: [solver_selection_thm/thm_results.ipynb](solver_selection_thm/thm_results.ipynb).
 
 It may take a few minutes to run the notebooks for the first time, as `Numba` needs to compile within `PorePy`.
+
+If you are experiencing problems with jupyter notebooks, the same can be done in python files:
+- [solver_selection_thm/spe_results.py](solver_selection_thm/spe_results.py);
+- [solver_selection_thm/thm_results.py](solver_selection_thm/thm_results.py).
 
 ## Step 3. Re-running the numerical experiments
 

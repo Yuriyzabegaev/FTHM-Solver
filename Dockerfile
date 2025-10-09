@@ -1,5 +1,7 @@
 FROM porepy-petsc:latest
 
+RUN sudo apt update && sudo apt upgrade -y
+
 RUN git -C ${HOME}/porepy fetch && \
     git -C ${HOME}/porepy checkout 65199b1a609af269d3a44204a06f8c97f3891d65
 
