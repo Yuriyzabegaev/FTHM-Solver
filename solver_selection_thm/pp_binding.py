@@ -1,23 +1,24 @@
-from functools import cached_property
-import traceback
 import time
+import traceback
+from functools import cached_property
+
+import numpy as np
+import porepy as pp
+from linear_solver_th import THSolver
+
+from fixed_stress import make_fs_analytical_slow_new
 from full_petsc_solver import (
     LinearTransformedScheme,
-    PetscKSPScheme,
-    PetscFieldSplitScheme,
-    PetscCompositeScheme,
     PcPythonPermutation,
+    PetscCompositeScheme,
+    PetscFieldSplitScheme,
+    PetscKSPScheme,
 )
-from fixed_stress import make_fs_analytical_slow_new
 from iterative_solver import IterativeLinearSolver
 from mat_utils import csr_to_petsc
 from solver_selection_thm.selector import SolverSelector
-from thermal.thm_solver import THMSolver, make_pt_permutation
-from linear_solver_th import THSolver
-import porepy as pp
-import numpy as np
-
 from solver_selection_thm.solver_space import SolverSchemeBuilder
+from thermal.thm_solver import THMSolver, make_pt_permutation
 
 
 class PetscKSPSchemeBuilder(SolverSchemeBuilder):

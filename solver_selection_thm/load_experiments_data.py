@@ -1,35 +1,22 @@
 import pickle
+from collections import defaultdict
 from copy import copy
-from itertools import count
 from typing import Literal
 
 import numpy as np
+import pandas as pd
 
 from plot_utils import load_data
 from solver_selection_thm.performance_predictor import (
-    PerformancePredictorEpsGreedy,
     PerformancePredictorPassiveAgressive,
 )
 from solver_selection_thm.pp_binding import KNOWN_SOLVER_COMPONENTS_THM
 from solver_selection_thm.selector import SolverSelector
-from solver_selection_thm.solver_space import (
-    CategoricalChoices,
-    NumericalChoices,
-    SolverSpace,
-)
+from solver_selection_thm.solver_space import SolverSpace
 from solver_selection_thm.spe_physics import X_SLICES, Z_SLICES
 from solver_selection_thm.spe_physics import simulation_name as simulation_name_spe
-from solver_selection_thm.thm_physics import (
-    ModelTHM,
-    initialize,
-    inlet_placements,
-    outlet_placements,
-    params,
-    run,
-)
-from solver_selection_thm.thm_physics import (
-    simulation_name as simulation_name_thm,
-)
+from solver_selection_thm.thm_physics import inlet_placements, outlet_placements, params
+from solver_selection_thm.thm_physics import simulation_name as simulation_name_thm
 
 
 def load_experiments_data_thm(
@@ -169,3 +156,62 @@ def load_experiments_data_spe(
                     print("failed to load", sim_name)
 
     return data_simulations_common, solver_selection_history_common, solver_selector
+
+
+def make_pandas(sim_data, perf_data, seq_ids):
+    sim_data_dict = defaultdict(lambda: [])
+    perf_data_dict = defaultdict(lambda: [])
+    for seq_id, data_simulations, solver_selection_history_seq in zip(
+        seq_ids, sim_data, perf_data
+    ):
+        sim_idx = -1
+        for data_row in data_simulations:
+            for data in data_row:
+                sim_idx += 1
+
+                for ts_idx, ts in enumerate(data):
+                    for ls_idx, ls in enumerate(ts.linear_solves):
+                        sim_data_dict["seq_id"].append(seq_id)
+                        sim_data_dict["sim_idx"].append(sim_idx)
+                        sim_data_dict["ts_idx"].append(ts_idx)
+                        sim_data_dict["ls_idx"].append(ls_idx)
+                        sim_data_dict["real_solve_time"].append(ls.linear_solve_time)
+                        sim_data_dict["krylov_iters"].append(ls.krylov_iters)
+                        sim_data_dict["petsc_converged_reason"].append(
+                            ls.petsc_converged_reason
+                        )
+                        sim_data_dict["cfl"].append(ls.cfl)
+                        sim_data_dict["simulation_dt"].append(ls.simulation_dt)
+                        sim_data_dict["enthalpy_max"].append(ls.enthalpy_max)
+                        sim_data_dict["enthalpy_mean"].append(ls.enthalpy_mean)
+                        sim_data_dict["fourier_max"].append(ls.fourier_max)
+                        sim_data_dict["fourier_mean"].append(ls.fourier_mean)
+
+        # they store the data incrementally (second has what first has and more)
+        offset = 0
+
+        for sim_idx, solver_selection_history in enumerate(
+            solver_selection_history_seq
+        ):
+            num_data = len(solver_selection_history.reward) - offset
+            perf_data_dict["seq_id"].extend([seq_id] * num_data)
+            perf_data_dict["sim_idx"].extend([sim_idx] * num_data)
+            perf_data_dict["reward"].extend(solver_selection_history.reward[-num_data:])
+            perf_data_dict["expectation"].extend(
+                solver_selection_history.expectation[-num_data:]
+            )
+            perf_data_dict["decision_idx"].extend(
+                solver_selection_history.decision_idx[-num_data:]
+            )
+            perf_data_dict["features"].extend(
+                solver_selection_history.features[-num_data:]
+            )
+            perf_data_dict["predict_time"].extend(
+                solver_selection_history.predict_time[-num_data:]
+            )
+            perf_data_dict["fit_time"].extend(
+                solver_selection_history.fit_time[-num_data:]
+            )
+            offset += num_data
+
+    return pd.DataFrame(data=sim_data_dict), pd.DataFrame(data=perf_data_dict)

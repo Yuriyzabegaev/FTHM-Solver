@@ -1,12 +1,13 @@
+from pickle import dump, load
+from time import time
+
+import numpy as np
+
 from solver_selection_thm.performance_predictor import (
-    PerformancePredictorEpsGreedy,
-    RewardEstimator,
+    InitialExplorationEstimator,
     concatenate_characteristics_solvers,
 )
 from solver_selection_thm.solver_space import SolverSchemeProtocol, SolverSpace
-import numpy as np
-from pickle import dump, load
-from time import time
 
 
 class SolverSelectorHistory:
@@ -52,14 +53,12 @@ class SolverSelectorHistory:
 class SolverSelector:
     def __init__(
         self,
-        # reward_estimator: RewardEstimator,
         solver_space: SolverSpace,
-        performance_predictor: PerformancePredictorEpsGreedy,
+        performance_predictor: InitialExplorationEstimator,
     ):
         self.solver_space: SolverSpace = solver_space
-        self.performance_predictor: PerformancePredictorEpsGreedy
+        self.performance_predictor: InitialExplorationEstimator
         self.performance_predictor = performance_predictor
-        # self.reward_estimator: RewardEstimator = reward_estimator
         self.history = SolverSelectorHistory()
 
     def select_linear_solver_scheme(

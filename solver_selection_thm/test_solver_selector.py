@@ -1,8 +1,15 @@
-import pytest
 import numpy as np
+import pytest
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import RidgeClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
 from solver_selection_thm.performance_predictor import (
-    PerformancePredictorEpsGreedy,
-    RewardEstimator,
+    EpsGreedyExplorationModel,
+    IncrementalRefitModel,
+    InitialExplorationEstimator,
+    TwoEstimators,
 )
 from solver_selection_thm.selector import SolverSelector
 from solver_selection_thm.solver_space import (
@@ -10,7 +17,6 @@ from solver_selection_thm.solver_space import (
     NumericalChoices,
     SolverSpace,
 )
-
 
 nd = 2
 contact = [0]
@@ -155,6 +161,7 @@ def make_solver_space_scheme_fthm(nd: int):
 @pytest.fixture
 def porepy_model():
     from porepy.models.thermoporomechanics import Thermoporomechanics
+
     from thermal.thm_solver import THMSolver
 
     class Model(THMSolver, Thermoporomechanics):
@@ -672,13 +679,23 @@ def test_solver_selector():
         solver_scheme_builders={"LinearTransformedScheme": MockSolverSchemeBuilder()},
     )
     num_solvers = solver_space.all_decisions_encoding.shape[0]
-    performance_predictor = PerformancePredictorEpsGreedy(
-        num_solvers=num_solvers,
-        exploration=0.5,
-        exploration_decrease_rate=0.9,
-    )
+    performance_predictor = InitialExplorationEstimator(
+            num_initial_exploration=64,
+            batch_size=64,
+            model=EpsGreedyExplorationModel(
+                eps=0,
+                eps1=0.9,
+                model=TwoEstimators(
+                    classifier=IncrementalRefitModel(
+                        model=make_pipeline(StandardScaler(), RidgeClassifier())
+                    ),
+                    regressor=IncrementalRefitModel(
+                        model=GradientBoostingRegressor(random_state=42)
+                    ),
+                ),
+            ),
+        )
     solver_selector = SolverSelector(
-        reward_estimator=RewardEstimator(),
         solver_space=solver_space,
         performance_predictor=performance_predictor,
     )
@@ -694,10 +711,7 @@ def test_solver_selector():
         assert scheme == "my_scheme"
 
         solve_time = 0.5 + 0.5 * np.cos(choice / (num_solvers - 1) * 2 * np.pi)
-        if solver_in_use_idx == choice:
-            construct_time = 1e-2
-        else:
-            construct_time = 1e-2 + 0.5 * np.sin(choice / (num_solvers - 1) * np.pi)
+        construct_time = 1e-2 + 0.5 * np.sin(choice / (num_solvers - 1) * np.pi)
         solver_in_use_idx = choice
         success = choice != 4
 
@@ -707,7 +721,7 @@ def test_solver_selector():
 
     # assert np.allclose(np.sum(rewards_history), 115.617)
     # assert np.allclose(np.sum(expectation_list), 3421.107)
-    assert np.sum(solver_selector.history.greedy) == 67
+    assert np.sum(solver_selector.history.greedy) == 36
     assert np.median(solver_selector.history.decision_idx) == 3
 
 

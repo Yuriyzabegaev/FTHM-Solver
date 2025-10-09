@@ -145,7 +145,7 @@ class SPE10Model(pp.MassAndEnergyBalance):
         inj_loc = self.locate_inlet(subdomains)
         inj_density = self.fluid.reference_component.density
 
-        prod_density = self.fluid.density(subdomains)
+        # prod_density = self.fluid.density(subdomains)
         # prod_loc = self.locate_outlet(subdomains)
 
         return (
@@ -163,9 +163,9 @@ class SPE10Model(pp.MassAndEnergyBalance):
         inj_loc = self.locate_inlet(subdomains)
         t_inj = self.units.convert_units(TEMPERATURE_INJECTION, "K")
 
-        prod_density = self.fluid.density(subdomains)
+        # prod_density = self.fluid.density(subdomains)
         # prod_loc = self.locate_outlet(subdomains)
-        t_prod = self.temperature(subdomains)
+        # t_prod = self.temperature(subdomains)
 
         return (
             super().energy_source(subdomains)

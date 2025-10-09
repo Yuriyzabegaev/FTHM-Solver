@@ -1,35 +1,6 @@
 from functools import cached_property
 
-import scipy.sparse
-from block_matrix import (
-    BlockMatrixStorage,
-    FieldSplitScheme,
-    KSPScheme,
-    MultiStageScheme,
-)
-import numpy as np
-from full_petsc_solver import (
-    LinearTransformedScheme,
-    PcPythonPermutation,
-    PetscCPRScheme,
-    PetscCompositeScheme,
-    PetscFieldSplitScheme,
-    PetscKSPScheme,
-)
-from mat_utils import (
-    BJacobiILU,
-    PetscHypreILU,
-    PetscSOR,
-    RestrictedOperator,
-    csr_to_petsc,
-    extract_diag_inv,
-    inv_block_diag,
-    PetscAMGFlow,
-    PetscAMGMechanics,
-    PetscILU,
-    make_scaling,
-    make_scaling_1,
-)
+from block_matrix import FieldSplitScheme
 from iterative_solver import (
     IterativeLinearSolver,
     get_equations_group_ids,
@@ -38,7 +9,6 @@ from iterative_solver import (
 
 
 class THSolver(IterativeLinearSolver):
-
     def group_row_names(self) -> list[str]:
         return [
             "Flow mat.",

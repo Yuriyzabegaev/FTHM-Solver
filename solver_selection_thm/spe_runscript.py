@@ -4,22 +4,21 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-import porepy as pp
-from limited_data_experiment import (
-    EpsGreedyExplorationModel,
-    GradientBoostingRegressor,
-    IncrementalRefitModel,
-    RidgeClassifier,
-    StandardScaler,
-    TwoEstimators,
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import RidgeClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+from solver_selection_thm.load_experiments_data import (
     load_experiments_data_spe,
     make_pandas,
-    make_pipeline,
 )
-
 from solver_selection_thm.performance_predictor import (
+    EpsGreedyExplorationModel,
+    IncrementalRefitModel,
     InitialExplorationEstimator,
     PerformancePredictorRandom,
+    TwoEstimators,
 )
 from solver_selection_thm.pp_binding import (
     KNOWN_SOLVER_COMPONENTS_THM,

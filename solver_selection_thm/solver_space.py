@@ -1,5 +1,6 @@
 from itertools import count, product
 from typing import Any, Callable, Optional, Protocol
+
 import numpy as np
 
 
