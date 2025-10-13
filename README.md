@@ -18,11 +18,6 @@ The implementation is based on [PorePy](https://github.com/pmgbergen/porepy) and
 
 # Reproduce the experiments
 
-Here you can find the information on how to:
-- [Prepare the environment](README.md#step-1-installation)
-- [Analyse and visualize the performance data of our numerical experiments](README.md#step-2-accessing-the-data-of-our-numerical-experiments)
-- [Reproduce the numerical experiements](README.md#step-3-re-running-the-numerical-experiments)
-
 ## Step 1. Installation
 
 To reproduce the experiments, PETSc, PorePy and all their dependencies must be installey. To skip this tedious process, it is highly recommended to use [Docker](https://www.docker.com/). We provide a *docker image*, which has all the needed dependencies packed into it and ensures reproducibility of the experiments. You need to install Docker following [the official instruction](https://www.docker.com/get-started/). The instructions below are *hopefully* agnostic to the operation system, but were tested on Windows 11 with Windows Subsystem for Linux 2 (WSL 2) installed.
