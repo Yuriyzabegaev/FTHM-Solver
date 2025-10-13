@@ -40,7 +40,7 @@ Please don't forget to pull the recent changes with `git pull`.
 
 For the graphical user interface, it is recommended to use [VSCode](https://code.visualstudio.com/) and attach to the running container, following [the official instruction](https://code.visualstudio.com/docs/devcontainers/attach-container).
 
-The repository root folder is located at `/home/porepy/solver_selection_thm` in the *docker container* file system.
+The repository root folder is located at `/home/porepy/fthm_solver/` in the *docker container* file system.
 
 The numerical experiments are tested using `Python 3.11.7`, PorePy commit `65199b1a609af269d3a44204a06f8c97f3891d65` and PETSc commit `bff66efa9044f546ae447ed195723e21295eb6dd`. All the other dependencies are listed in [requirements.txt](requirements.txt). The *docker container* has the correct versions pre-installed, so you don't need to do anything else.
 
