@@ -32,7 +32,7 @@ When Docker is installed and running, download [the image of this repository](ht
 To start a *docker container* based on this image, navigate to the folder you've downloaded it and run these terminal commands:
 ```
 docker load -i fthm_solver.tar.gz   # This may take a few minutes
-docker run -dit --name fthm_solver sfthm_solver:latest
+docker run -dit --name fthm_solver fthm_solver:latest
 docker exec -it fthm_solver /bin/bash
 ```
 
