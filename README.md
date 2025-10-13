@@ -26,7 +26,7 @@ Here you can find the information on how to:
 To reproduce the experiments, PETSc, PorePy and all their dependencies must be installey. To skip this tedious process, it is highly recommended to use [Docker](https://www.docker.com/). We provide a *docker image*, which has all the needed dependencies packed into it and ensures reproducibility of the experiments. You need to install Docker following [the official instruction](https://www.docker.com/get-started/). The instructions below are *hopefully* agnostic to the operation system, but were tested on Windows 11 with Windows Subsystem for Linux 2 (WSL 2) installed.
 
 
-When Docker is installed and running, download [the image of this repository](todo). Note that it is a few gigabytes. 
+When Docker is installed and running, download [the image of this repository](https://doi.org/10.5281/zenodo.17307094). Note that it is a few gigabytes. 
 To start a *docker container* based on this image, navigate to the folder you've downloaded it and run these terminal commands:
 ```
 docker load -i solver_selection_thm.tar.gz   # This may take a few minutes
