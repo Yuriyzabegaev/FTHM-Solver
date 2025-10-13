@@ -1,13 +1,15 @@
 FROM porepy-petsc:latest
 
-RUN git -C ${HOME}/porepy pull
+RUN sudo apt update && sudo apt upgrade -y
 
-RUN git clone https://github.com/Yuriyzabegaev/FTHM-Solver.git && \
-    pip install --no-cache-dir -r FTHM-Solver/requirements.txt
+RUN git -C ${HOME}/porepy fetch && \
+    git -C ${HOME}/porepy checkout 65199b1a609af269d3a44204a06f8c97f3891d65
 
-ENV PYTHONPATH=${PYTHONPATH}:${HOME}/FTHM-Solver
-ENV PYTHONPATH=${PYTHONPATH}:${HOME}/FTHM-Solver/experiments
+RUN git clone -b thermal https://github.com/Yuriyzabegaev/FTHM-Solver.git fthm_solver && \
+    pip install --no-cache-dir -r fthm_solver/requirements.txt
 
-WORKDIR ${HOME}/FTHM-Solver
+ENV PYTHONPATH=${PYTHONPATH}:${HOME}/fthm_solver
+
+WORKDIR ${HOME}/fthm_solver
 
 ENTRYPOINT [ "/bin/bash" ]

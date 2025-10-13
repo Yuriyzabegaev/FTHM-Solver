@@ -1,10 +1,13 @@
-import porepy as pp
-import numpy as np
+import sys
 import time
-from thermal.models import Physics, ConstraintLineSearchNonlinearSolver
-from thermal.thm_solver import THMSolver
+
+import numpy as np
+import porepy as pp
+
 from plot_utils import write_dofs_info
 from stats import StatisticsSavingMixin
+from thermal.models import ConstraintLineSearchNonlinearSolver, Physics
+from thermal.thm_solver import THMSolver
 
 XMAX = 1000
 YMAX = 2000
@@ -96,12 +99,6 @@ class Geometry(pp.PorePyModel):
         return super().energy_source(subdomains) + pp.ad.DenseArray(src)
 
     def set_domain(self):
-        #     self._domain = pp.Domain(
-        #         {"xmin": 0, "xmax": 1000, "ymin": 0, "ymax": 1000, "zmin": 0, "zmax": 1000}
-        #     )
-        # self._domain = pp.Domain(
-        #     {"xmin": 0, "xmax": 1000, "ymin": 0, "ymax": 2250, "zmin": 0, "zmax": 1000}
-        # )
         self._domain = pp.Domain(
             {
                 "xmin": 0,
@@ -114,15 +111,6 @@ class Geometry(pp.PorePyModel):
         )
 
     def set_fractures(self) -> None:
-        #     coords_a = [0.5, 0.5, 0.5, 0.5]
-        #     coords_b = [0.2, 0.2, 0.8, 0.8]
-        #     coords_c = [0.2, 0.8, 0.8, 0.2]
-        #     pts = []
-        #     pts.append(np.array([coords_a, coords_b, coords_c]) * 1000)
-        #     pts.append(np.array([coords_b, coords_a, coords_c]) * 1000)
-        #     pts.append(np.array([coords_b, coords_c, coords_a]) * 1000)
-        #     self._fractures = [pp.PlaneFracture(pts[i]) for i in range(3)]
-
         fracs = np.array(
             [
                 [
@@ -180,28 +168,6 @@ class Geometry(pp.PorePyModel):
         self._fractures = [
             pp.PlaneFracture(frac, check_convexity=True) for frac in fracs
         ]
-
-    # def set_geometry(self) -> None:
-    #     """Create mixed-dimensional grid and fracture network."""
-
-    #     # Create mixed-dimensional grid and fracture network.
-    #     self.mdg, self.fracture_network = benchmark_3d_case_3(
-    #         refinement_level=self.params["refinement_level"]
-    #     )
-    #     self.nd: int = self.mdg.dim_max()
-
-    #     # Obtain domain and fracture list directly from the fracture network.
-    #     self._domain = self.fracture_network.domain
-    #     self._domain.bounding_box["xmin"] = -0.2 * self._domain.bounding_box["xmax"]
-    #     self._domain.bounding_box["ymin"] = -0.2 * self._domain.bounding_box["ymax"]
-    #     self._domain.bounding_box["zmin"] = -0.2 * self._domain.bounding_box["zmax"]
-    #     self._domain.bounding_box["xmax"] *= 1.2
-    #     self._domain.bounding_box["ymax"] *= 1.2
-    #     self._domain.bounding_box["zmax"] *= 1.2
-    #     self._fractures = self.fracture_network.fractures
-
-    #     # Create projections between local and global coordinates for fracture grids.
-    #     pp.set_local_coordinate_projections(self.mdg)
 
     def after_simulation(self):
         super().after_simulation()
@@ -327,12 +293,7 @@ def run_grid_refinement_experiment():
         "geometry": "5",
         "save_matrix": False,
     }
-    for g in [
-        5,
-        2,
-        1,
-        0.5,
-    ]:
+    for g in [0.5, 1, 2, 5]:
         for s in [
             "CPR",
             "SAMG",
@@ -362,12 +323,7 @@ def run_grid_refinement_direct_solver():
         "geometry": "5",
         "save_matrix": False,
     }
-    for g in [
-        0.5,
-        1,
-        2,
-        5
-    ]:
+    for g in [0.5, 1, 2, 5]:
         for s in [0]:
             print("Running steady state")
             params = {
@@ -388,16 +344,15 @@ def run_grid_refinement_direct_solver():
             run_model(params)
 
 
-import sys
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         run_grid_refinement_experiment()
 
     command = sys.argv[1]
-    if command == 'refinement':
+    if command == "refinement":
         run_grid_refinement_experiment()
-    elif command == 'direct':
+    elif command == "direct":
         run_grid_refinement_direct_solver()
     else:
         raise ValueError(command)

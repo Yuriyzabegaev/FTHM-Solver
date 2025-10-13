@@ -1,19 +1,9 @@
-from functools import cached_property
-import porepy as pp
-import numpy as np
-from porepy.models.constitutive_laws import (
-    ConstantPermeability,
-    CubicLawPermeability,
-    DimensionDependentPermeability,
-    SpecificStorage,
-)
-from experiments.models import (
-    ConstraintLineSearchNonlinearSolver,
-    get_friction_coef_config,
-    get_barton_bandis_config,
-)
-from porepy.models.thermoporomechanics import Thermoporomechanics
+from functools import cache, cached_property
 
+import numpy as np
+from porepy.models.constitutive_laws import CubicLawPermeability
+from porepy.models.thermoporomechanics import Thermoporomechanics
+from porepy.numerics.nonlinear import line_search
 
 SETUP_REFERENCE = {
     "physics": 1,  # 0 - simplified; 1 - full
@@ -26,7 +16,13 @@ SETUP_REFERENCE = {
 }
 
 
-from functools import cache
+class ConstraintLineSearchNonlinearSolver(
+    line_search.ConstraintLineSearch,  # The tailoring to contact constraints.
+    line_search.SplineInterpolationLineSearch,  # Technical implementation of the actual search along given update direction
+    line_search.LineSearchNewtonSolver,  # General line search.
+):
+    """Collect all the line search methods in one class."""
+
 
 
 def cache_ad_tree(func):
@@ -39,7 +35,6 @@ def cache_ad_tree(func):
 
 
 class Physics(CubicLawPermeability, Thermoporomechanics):
-
     def prepare_simulation(self):
         # This speeds up Porepy by caching the once-built AD trees.
         self.aperture = cache_ad_tree(self.aperture)
@@ -129,7 +124,7 @@ class Physics(CubicLawPermeability, Thermoporomechanics):
         self._linear_solve_stats.temp_min = tmin
         self._linear_solve_stats.temp_max = tmax
         print(f"Temperature: {tmin:.2f}, {tmax:.2f}")
-        
+
         pressure = self.pressure(self.mdg.subdomains()).value(self.equation_system)
         pmin, pmax = min(pressure), max(pressure)
         self._linear_solve_stats.pressure_min = pmin
@@ -139,7 +134,7 @@ class Physics(CubicLawPermeability, Thermoporomechanics):
         enthalpy_max, enthalpy_mean, fourier_max, fourier_mean = (
             self.compute_convection_diffusion_transport()
         )
-        print(f"Peclet: {enthalpy_max/fourier_max:.1e}, CFL: {cfl:.1e}")
+        print(f"Peclet: {enthalpy_max / fourier_max:.1e}, CFL: {cfl:.1e}")
         self._linear_solve_stats.cfl = cfl
         self._linear_solve_stats.enthalpy_max = enthalpy_max
         self._linear_solve_stats.enthalpy_mean = enthalpy_mean
