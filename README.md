@@ -60,9 +60,9 @@ Executing all these experiments takes about a real world week on our .
 
 
 When the experiments are complete, you can use the jupyter notebooks to visualize and analyse the data:
-- [thermal/experiments_thermal_4_results.ipynb](thermal/experiments_thermal_4_results.ipynb) - 2D grid refinement;
+- [thermal/experiment_thermal_4_results.ipynb](thermal/experiment_thermal_4_results.ipynb) - 2D grid refinement;
 - [thermal/variations_4.ipynb](thermal/variations_4.ipynb) - 2D friction coefficient and Peclet;
-- [thermal/experiments_thermal_5_results.ipynb](thermal/experiments_thermal_5_results.ipynb) - 3D grid refinement.
+- [thermal/experiment_thermal_5_results.ipynb](thermal/experiment_thermal_5_results.ipynb) - 3D grid refinement.
 
 
 # Acknowledgement
