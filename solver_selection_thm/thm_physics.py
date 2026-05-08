@@ -20,6 +20,8 @@ def simulation_name(params: dict) -> str:
 
 
 class ModelTHM(CubicLawPermeability, pp.Thermoporomechanics):
+    """Simulation model for Sequence B."""
+
     def ic_values_temperature(self, sd: pp.Grid) -> np.ndarray:
         return np.ones(sd.num_cells) * self.units.convert_units(273 + 120, "K")
 

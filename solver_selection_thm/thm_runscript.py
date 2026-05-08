@@ -44,7 +44,7 @@ from stats import StatisticsSavingMixin
 
 
 class ModelTHMWithSelector(StatisticsSavingMixin, SolverSelectionMixinTHM, ModelTHM):
-    pass
+    """The class defines the simulation for Sequence B."""
 
 
 contact = [0]
@@ -55,6 +55,7 @@ temp = [8, 9, 10]
 
 
 def make_solver_space_scheme_fthm(nd: int):
+    """Describe the range of available options for solver selection in Sequence B."""
     SYSTEM_AMG_OR_ILU = {
         "block_type": "PetscFieldSplitScheme",
         "groups": flow + temp,
@@ -322,6 +323,8 @@ if __name__ == "__main__":
             'Command line arguments: run_index (int), case ("solver_selection", "random", "expert")'
         )
 
+    # Generate and save to file the geometries for all experiments in Sequence B.
+
     np.random.seed(run_idx)
     inlet_placements = np.array(inlet_placements)
     outlet_placements = np.array(outlet_placements)
@@ -356,8 +359,10 @@ if __name__ == "__main__":
     print("Num solvers:", num_solvers)
 
     if CASE == "random":
+        # Create a random performance predictor.
         performance_predictor = PerformancePredictorRandom(num_solvers=num_solvers)
     elif CASE == "solver_selection":
+        # Create the ML-based performance predictor.
         performance_predictor = InitialExplorationEstimator(
             num_initial_exploration=64,
             batch_size=64,
@@ -375,6 +380,8 @@ if __name__ == "__main__":
             ),
         )
     elif CASE == "expert":
+        # Create the ML-based performance predictor and load the data from all the past
+        # experiments.
         performance_predictor = InitialExplorationEstimator(
             num_initial_exploration=64,
             batch_size=64,
@@ -423,6 +430,8 @@ if __name__ == "__main__":
     )
 
     params["setup"]["linear_solver_selector"] = solver_selector
+
+    # Run the experiments in Sequence B.
 
     for inlet_placement in inlet_placements[permutations_inlet[run_idx - IDX_START]]:
         for outlet_placement in outlet_placements[

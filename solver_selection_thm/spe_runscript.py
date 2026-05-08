@@ -43,9 +43,10 @@ from stats import StatisticsSavingMixin
 
 
 class ModelSPEWithSelector(StatisticsSavingMixin, SolverSelectionMixinTH, SPE10Model):
-    pass
+    """The class defines the simulation for Sequence A."""
 
     def data_to_export(self):
+        """Among others, export to file porosity and permeability fields."""
         data = super().data_to_export()
         sds = self.mdg.subdomains()
         cell_offsets = np.cumsum([0] + [sd.num_cells for sd in sds])
@@ -70,6 +71,7 @@ class ModelSPEWithSelector(StatisticsSavingMixin, SolverSelectionMixinTH, SPE10M
 
 
 def make_solver_space_scheme_hm(nd: int):
+    """Describe the range of available options for solver selection in Sequence A."""
     flow = [0]
     temp = [1]
     SYSTEM_AMG_OR_ILU = {
@@ -252,6 +254,8 @@ if __name__ == "__main__":
         run_idx = IDX_START
         CASE = "tmp"
 
+    # Generate and save to file the geometries for all experiments in Sequence A.
+
     np.random.seed(run_idx)
     Z_SLICES = np.array(Z_SLICES)
     X_SLICES = np.array(X_SLICES)
@@ -281,9 +285,10 @@ if __name__ == "__main__":
     print("Num solvers:", num_solvers)
 
     if CASE == "random":
+        # Create a random performance predictor.
         performance_predictor = PerformancePredictorRandom(num_solvers=num_solvers)
     elif CASE == "solver_selection":
-        # performance_predictor = Estimator(num_solvers=num_solvers)
+        # Create the ML-based performance predictor.
         performance_predictor = InitialExplorationEstimator(
             num_initial_exploration=64,
             batch_size=64,
@@ -301,6 +306,8 @@ if __name__ == "__main__":
             ),
         )
     elif CASE in ["expert", "tmp"]:
+        # Create the ML-based performance predictor and load the data from all the past
+        # experiments.
         performance_predictor = InitialExplorationEstimator(
             num_initial_exploration=64,
             batch_size=64,
@@ -351,6 +358,8 @@ if __name__ == "__main__":
         performance_predictor=performance_predictor,
     )
     params["setup"]["linear_solver_selector"] = solver_selector
+
+    # Run the experiments in Sequence A.
 
     for z_slice in Z_SLICES[permutations_z[run_idx - IDX_START]]:
         for x_slice in X_SLICES[permutations_x[run_idx - IDX_START]]:

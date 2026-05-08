@@ -119,8 +119,9 @@ It is structured as follows:
 - `thm_results.ipynb` and `thm_results.py` are the scripts to analyze the data generated during the experiments, and generate figures for Sequence B.
 - `thm_runscript.py` is a runscript for Sequence B.
 
+If you want to re-utilize the code in your software, I recommend looking at https://github.com/pmgbergen/porepy-iterative-solvers/ which contains a newer, maintained version of this code, integrated in PorePy. That code is much better readable, documented and covered with tests.
+
 # Citing
 
 If you want to cite this code in your research, we ask you to cite the following preprint: https://arxiv.org/abs/2510.04920
-
 The link will be updated upon journal publication.

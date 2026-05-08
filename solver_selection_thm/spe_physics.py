@@ -10,7 +10,10 @@ SCALE = 1e6
 
 
 class SPE10Model(pp.MassAndEnergyBalance):
+    """Simulation model for Sequence A."""
+
     def __init__(self, params):
+        # Load the SPE10 permeability and porosity
         self._spe10_perm = np.load("solver_selection_thm/spe10_data/spe_perm.npy")
         self._spe10_perm *= SCALE
         self._spe10_phi = np.load("solver_selection_thm/spe10_data/spe_phi.npy")
