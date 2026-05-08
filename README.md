@@ -99,6 +99,26 @@ When the experiments are complete, you can return to [Step 2](README.md#step-2-a
 
 This project has received funding from the VISTA program, The Norwegian Academy of Science and Letters and Equinor and from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation program (grant agreement No 101002507).
 
+# Code structure
+
+The code for the numerical experiments in the ML solver selection is stored in directory `solver_selection_thm`.
+It is structured as follows:
+- `spe10_data` subfolder contains binary data of the SPE10 porosity and permeability, and a script to generate this data from the original format.
+- `linear_solver_th.py` describes a linear solver configuration for Sequence A.
+- `load_experiments_data.py` contains functions to load the data which the experiments produced. The loaded datasets are used to generate figures.
+- `performance_predictor.py` defines the scikit-learn based ML models.
+- `pp_binding.py` is a bridge between the code here and the simulation software PorePy, which the experiments use.
+- `runscript.sh` is the entrypoint to run the experiments.
+- `selector.py` contains the logic of the ML solver selection.
+- `solver_space.py` defines classes that describe the ranges of available choices in solver configurations.
+- `spe_physics.py` defines the simulated model for Sequence A.
+- `spe_results.ipynb` and `spe_results.py` are the scripts to analyze the data generated during the experiments, and generate figures for Sequence A.
+- `spe_runscript.py` is a runscript for Sequence A.
+- `test_solver_selector.py` are a few unit tests.
+- `thm_physics.py` defines the simulated model for Sequence B.
+- `thm_results.ipynb` and `thm_results.py` are the scripts to analyze the data generated during the experiments, and generate figures for Sequence B.
+- `thm_runscript.py` is a runscript for Sequence B.
+
 # Citing
 
 If you want to cite this code in your research, we ask you to cite the following preprint: https://arxiv.org/abs/2510.04920
