@@ -98,3 +98,9 @@ When the experiments are complete, you can return to [Step 2](README.md#step-2-a
 # Acknowledgement
 
 This project has received funding from the VISTA program, The Norwegian Academy of Science and Letters and Equinor and from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation program (grant agreement No 101002507).
+
+# Citing
+
+If you want to cite this code in your research, we ask you to cite the following preprint: https://arxiv.org/abs/2510.04920
+
+The link will be updated upon journal publication.
