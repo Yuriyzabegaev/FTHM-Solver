@@ -308,6 +308,125 @@ def make_solver_space_scheme_fthm(nd: int):
     }
 
 
+def make_solver_space_scheme_fthm_petsc_default():
+    CPR = {
+        "block_type": "PetscCompositeScheme",
+        "groups": flow + temp,
+        "solvers": {
+            0: {
+                "block_type": "PetscFieldSplitScheme",
+                "groups": flow,
+                "fieldsplit_options": {
+                    "pc_fieldsplit_type": "additive",
+                },
+                "elim_options": CategoricalChoices(
+                    [
+                        {
+                            "pc_type": "hypre",
+                            "pc_hypre_type": "boomeramg",
+                            "pc_hypre_boomeramg_P_max": 16,
+                        },
+                    ]
+                ),
+                "complement": {
+                    "block_type": "PetscFieldSplitScheme",
+                    "groups": temp,
+                    "elim_options": {
+                        "pc_type": CategoricalChoices(
+                            [
+                                "sor",
+                            ]
+                        ),
+                    },
+                },
+            },
+            1: {
+                "block_type": "PetscFieldSplitScheme",
+                "groups": flow + temp,
+                "python_pc": {
+                    "block_type": "PcPythonPermutation",
+                    "permutation_type": "pt_permutation",
+                    "p_groups": flow,
+                    "t_groups": temp,
+                    "block_size": 2,
+                },
+                "elim_options": {
+                    "python_pc_type": CategoricalChoices(
+                        [
+                            "ilu",
+                        ]
+                    ),
+                },
+            },
+        },
+    }
+    return {
+        "block_type": "LinearTransformedScheme",
+        "scale_energy_balance": True,
+        "Qright": True,
+        "inner": {
+            "block_type": "PetscKSPScheme",
+            "petsc_options": {
+                "ksp_monitor": None,
+                "ksp_rtol": 1e-12,
+                "ksp_gmres_restart": NumericalChoices([100]),
+            },
+            "compute_eigenvalues": False,
+            "preconditioner": {
+                "block_type": "PetscFieldSplitScheme",
+                "groups": contact,
+                "block_size": 3,
+                "fieldsplit_options": {
+                    "pc_fieldsplit_schur_precondition": "selfp",
+                },
+                "elim_options": {
+                    "pc_type": "pbjacobi",
+                },
+                "keep_options": {
+                    "mat_schur_complement_ainv_type": "blockdiag",
+                },
+                "complement": {
+                    "block_type": "PetscFieldSplitScheme",
+                    "groups": intf,
+                    "elim_options": {
+                        "pc_type": "ilu",
+                    },
+                    "fieldsplit_options": {
+                        "pc_fieldsplit_schur_precondition": "selfp",
+                    },
+                    "complement": {
+                        "block_type": "PetscFieldSplitScheme",
+                        "groups": mech,
+                        "elim_options": CategoricalChoices(
+                            [
+                                {
+                                    "pc_type": "hypre",
+                                    "pc_hypre_type": "boomeramg",
+                                    "pc_hypre_boomeramg_P_max": 16,
+                                },
+                            ]
+                        ),
+                        "block_size": 3,
+                        "invert": {
+                            "block_type": "fs_analytical_slow_new",
+                            "p_mat_group": 5,
+                            "p_frac_group": 6,
+                            "groups": flow + temp,
+                        },
+                        "complement": {
+                            "block_type": CategoricalChoices(
+                                [
+                                    CPR,
+                                ]
+                            ),
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+
 if __name__ == "__main__":
     Path("stats/").mkdir(exist_ok=True)
     import pickle
@@ -317,10 +436,12 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 3:
         run_idx = IDX_START + int(sys.argv[1])
-        CASE: Literal["solver_selection", "random", "expert"] = sys.argv[2]
+        CASE: Literal["solver_selection", "random", "expert", "PETSC_DEFAULT"] = (
+            sys.argv[2]
+        )
     else:
         raise ValueError(
-            'Command line arguments: run_index (int), case ("solver_selection", "random", "expert")'
+            'Command line arguments: run_index (int), case ("solver_selection", "random", "expert", "PETSC_DEFAULT")'
         )
 
     # Generate and save to file the geometries for all experiments in Sequence B.
@@ -338,17 +459,22 @@ if __name__ == "__main__":
 
     print("Starting run", run_idx, CASE)
 
-    solver_space_scheme = make_solver_space_scheme_fthm(nd=3)
-    with open(f"stats/thm_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
-        pickle.dump(solver_space_scheme, f)
-    with open(f"stats/thm_permutations_{run_idx}.pkl", "wb") as f:
-        pickle.dump(
-            {
-                "inlet": permutations_inlet[run_idx - IDX_START],
-                "outlet": permutations_outlet[run_idx - IDX_START],
-            },
-            f,
-        )
+    if CASE != "PETSC_DEFAULT":
+        solver_space_scheme = make_solver_space_scheme_fthm(nd=3)
+    else:
+        solver_space_scheme = make_solver_space_scheme_fthm_petsc_default()
+
+    if CASE != "PETSC_DEFAULT":
+        with open(f"stats/thm_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
+            pickle.dump(solver_space_scheme, f)
+        with open(f"stats/thm_permutations_{run_idx}.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "inlet": permutations_inlet[run_idx - IDX_START],
+                    "outlet": permutations_outlet[run_idx - IDX_START],
+                },
+                f,
+            )
 
     solver_space = SolverSpace(
         solver_space_scheme=solver_space_scheme,
@@ -358,7 +484,7 @@ if __name__ == "__main__":
     print(solver_space.decision_tree)
     print("Num solvers:", num_solvers)
 
-    if CASE == "random":
+    if CASE in ["random", "PETSC_DEFAULT"]:
         # Create a random performance predictor.
         performance_predictor = PerformancePredictorRandom(num_solvers=num_solvers)
     elif CASE == "solver_selection":
@@ -446,9 +572,12 @@ if __name__ == "__main__":
                 pass  # do nothing
             elif CASE == "expert":
                 sim_name = f"EXPERT_{sim_name}"
+            elif CASE == "PETSC_DEFAULT":
+                sim_name = f"PETSC_DEFAULT_{sim_name}"
             else:
                 raise ValueError(CASE)
             params["folder_name"] = sim_name
+            params["times_to_export"] = []
 
             try:
                 model = ModelTHMWithSelector(params)

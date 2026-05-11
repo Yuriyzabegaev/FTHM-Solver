@@ -237,6 +237,78 @@ def make_solver_space_scheme_hm(nd: int):
     }
 
 
+def make_solver_space_scheme_hm_petsc_default():
+    flow = [0]
+    temp = [1]
+    CPR = {
+        "block_type": "PetscCompositeScheme",
+        "groups": flow + temp,
+        "solvers": {
+            0: {
+                "block_type": "PetscFieldSplitScheme",
+                "groups": flow,
+                "fieldsplit_options": {
+                    "pc_fieldsplit_type": "additive",
+                },
+                "elim_options": CategoricalChoices(
+                    [
+                        {
+                            "pc_type": "hypre",
+                            "pc_hypre_type": "boomeramg",
+                            "pc_hypre_boomeramg_P_max": 16,
+                        },
+                    ]
+                ),
+                "complement": {
+                    "block_type": "PetscFieldSplitScheme",
+                    "groups": temp,
+                    "elim_options": {
+                        "pc_type": CategoricalChoices(
+                            [
+                                "sor",
+                            ]
+                        ),
+                    },
+                },
+            },
+            1: {
+                "block_type": "PetscFieldSplitScheme",
+                "groups": flow + temp,
+                "python_pc": {
+                    "block_type": "PcPythonPermutation",
+                    "permutation_type": "pt_permutation",
+                    "p_groups": flow,
+                    "t_groups": temp,
+                    "block_size": 2,
+                },
+                "elim_options": {
+                    "python_pc_type": CategoricalChoices(
+                        [
+                            "ilu",
+                        ]
+                    ),
+                },
+            },
+        },
+    }
+
+    return {
+        "block_type": "PetscKSPScheme",
+        "petsc_options": {
+            "ksp_monitor": None,
+            "ksp_rtol": 1e-12,
+        },
+        "compute_eigenvalues": False,
+        "preconditioner": {
+            "block_type": CategoricalChoices(
+                [
+                    CPR,
+                ]
+            ),
+        },
+    }
+
+
 if __name__ == "__main__":
     Path("stats/").mkdir(exist_ok=True)
 
@@ -246,10 +318,12 @@ if __name__ == "__main__":
     IDX_START = 200
     if len(sys.argv) == 3:
         run_idx = IDX_START + int(sys.argv[1])
-        CASE: Literal["solver_selection", "random", "expert", "tmp"] = sys.argv[2]
+        CASE: Literal[
+            "solver_selection", "random", "expert", "tmp", "PETSC_DEFAULT"
+        ] = sys.argv[2]
     else:
         print(
-            'Command line arguments: run_index (int), case ("solver_selection", "random", "expert")'
+            'Command line arguments: run_index (int), case ("solver_selection", "random", "expert", "PETSC_DEFAULT")'
         )
         run_idx = IDX_START
         CASE = "tmp"
@@ -261,20 +335,24 @@ if __name__ == "__main__":
     X_SLICES = np.array(X_SLICES)
     permutations_z = [np.random.permutation(len(Z_SLICES)) for i in range(5)]
     permutations_x = [np.random.permutation(len(X_SLICES)) for i in range(5)]
-    solver_space_scheme = make_solver_space_scheme_hm(nd=3)
+    if CASE != "PETSC_DEFAULT":
+        solver_space_scheme = make_solver_space_scheme_hm(nd=3)
+    else:
+        solver_space_scheme = make_solver_space_scheme_hm_petsc_default()
 
     print("Starting run", run_idx, CASE)
 
-    with open(f"stats/spe_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
-        pickle.dump(solver_space_scheme, f)
-    with open(f"stats/spe_permutations_{run_idx}.pkl", "wb") as f:
-        pickle.dump(
-            {
-                "x": permutations_x[run_idx - IDX_START],
-                "z": permutations_z[run_idx - IDX_START],
-            },
-            f,
-        )
+    if CASE != "PETSC_DEFAULT":
+        with open(f"stats/spe_solver_space_scheme_run_{run_idx}.pkl", "wb") as f:
+            pickle.dump(solver_space_scheme, f)
+        with open(f"stats/spe_permutations_{run_idx}.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "x": permutations_x[run_idx - IDX_START],
+                    "z": permutations_z[run_idx - IDX_START],
+                },
+                f,
+            )
 
     solver_space = SolverSpace(
         solver_space_scheme=solver_space_scheme,
@@ -284,7 +362,7 @@ if __name__ == "__main__":
     print(solver_space.decision_tree)
     print("Num solvers:", num_solvers)
 
-    if CASE == "random":
+    if CASE in ["random", "PETSC_DEFAULT"]:
         # Create a random performance predictor.
         performance_predictor = PerformancePredictorRandom(num_solvers=num_solvers)
     elif CASE == "solver_selection":
@@ -374,16 +452,19 @@ if __name__ == "__main__":
                 sim_name = f"EXPERT_{sim_name}"
             elif CASE == "tmp":
                 sim_name = f"TMP_{sim_name}"
+            elif CASE == "PETSC_DEFAULT":
+                sim_name = f"PETSC_DEFAULT_{sim_name}"
             else:
                 raise ValueError(CASE)
             params["folder_name"] = sim_name
+            params["times_to_export"] = []
             model = ModelSPEWithSelector(params)
             print(model.simulation_name())
             model.prepare_simulation()
             print("Running")
             try:
                 run(model, params)
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
             solver_selector.history.save(
                 f"./stats/solver_selection_history_{sim_name}.npy"
