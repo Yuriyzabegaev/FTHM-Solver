@@ -28,7 +28,7 @@ from solver_selection_thm.thm_physics import simulation_name as simulation_name_
 
 def load_experiments_data_thm(
     runs: list[int],
-    case: Literal["expert", "random", "solver_selection"],
+    case: Literal["expert", "random", "solver_selection", "petsc_default"],
     dir="../stats/",
 ):
     data_simulations_common = []
@@ -94,6 +94,8 @@ def load_experiments_data_thm(
                     pass
                 elif case == "expert":
                     sim_name = f"EXPERT_{sim_name}"
+                elif case == "petsc_default":
+                    sim_name = f"PETSC_DEFAULT_{sim_name}"
                 else:
                     raise ValueError(case)
                 try:
@@ -111,7 +113,7 @@ def load_experiments_data_thm(
 
 def load_experiments_data_spe(
     runs: list[int],
-    case: Literal["expert", "random", "solver_selection"],
+    case: Literal["expert", "random", "solver_selection", "petsc_default"],
     dir="../stats/",
 ):
     data_simulations_common = []
@@ -179,6 +181,8 @@ def load_experiments_data_spe(
                     pass
                 elif case == "expert":
                     sim_name = f"EXPERT_{sim_name}"
+                elif case == "petsc_default":
+                    sim_name = f"PETSC_DEFAULT_{sim_name}"
                 else:
                     raise ValueError(case)
                 try:
