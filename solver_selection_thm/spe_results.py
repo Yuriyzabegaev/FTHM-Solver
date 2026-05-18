@@ -1,10 +1,14 @@
-# %% [markdown]
+#!/usr/bin/env python
+# coding: utf-8
+
 # This notebooks contains all the analysis from the paper related to the coupled flow and heat transport problem **(Sequence A)**.
 # It loads the data from the `stats/` folder.
 # 
 # The headings in the notebook correspond to the sections of the paper.
 
-# %%
+# In[1]:
+
+
 from load_experiments_data import load_experiments_data_spe, make_pandas
 import numpy as np
 from matplotlib import pyplot as plt
@@ -33,10 +37,12 @@ sns.set_theme(
 ALL_RUNS = [200, 201, 202, 203, 204]
 Path('figures/').mkdir(exist_ok=True)
 
-# %% [markdown]
+
 # # 6.1 Collecting Statistics
 
-# %%
+# In[2]:
+
+
 sim_data_random, perf_data_random, solver_selector = load_experiments_data_spe(
     runs=ALL_RUNS, case='random'
 )
@@ -46,7 +52,10 @@ print('Num solvers:', num_solvers)
 print('Num category choices:', solver_space.num_category_choices)
 print('Num numerical choices:', solver_space.num_numerical_choices)
 
-# %%
+
+# In[3]:
+
+
 df_sim_rand, df_perf_rand = make_pandas(
     sim_data=sim_data_random,
     perf_data=perf_data_random,
@@ -55,13 +64,15 @@ df_sim_rand, df_perf_rand = make_pandas(
 
 df_perf_rand.head()
 
-# %% [markdown]
+
 # The cell below does this:
 # 1. We store the performance data for each configuration separately;
 # 2. We find the mean run time for each configuration;
 # 3. We sort the configurations based on the mean run time and plot it.
 
-# %%
+# In[4]:
+
+
 y_by_solver_id = [[] for _ in range(num_solvers)]
 success_failure_by_solver_id = [[] for _ in range(num_solvers)]
 for row in df_perf_rand.itertuples(index=False):
@@ -112,14 +123,19 @@ plt.tight_layout()
 
 plt.savefig('figures/spe_sorted_run_times.png', dpi=600)
 
-# %%
-solver_selection_mean = 1.65  # this is the mean run time in the solver selection experiment (we get this number in Section 6.2, below)
+
+# In[5]:
+
+
+solver_selection_mean = 0.64  # this is the mean run time in the solver selection experiment (we get this number in Section 6.2, below)
 print('The mean solver with solver selection corresponds to % best on the histogram above:', (mean[sorted_idx] < solver_selection_mean).sum() / mean.size * 100)
 
-# %% [markdown]
+
 # Below, we compute statistics for the table in Section 6.1
 
-# %%
+# In[6]:
+
+
 num_always_success = 0
 num_always_failure = 0
 num_swinging = 0
@@ -136,7 +152,10 @@ for x in success_failure_by_solver_id:
 
 print(num_always_success, num_always_failure, num_swinging)
 
-# %%
+
+# In[7]:
+
+
 import pandas as pd
 
 success = df_perf_rand.reward > -200
@@ -158,10 +177,12 @@ stats = {
 }
 pd.DataFrame(stats).T.round(2)
 
-# %% [markdown]
+
 # # 6.2 Solver Selection Experiment
 
-# %%
+# In[8]:
+
+
 sim_data, perf_data, solver_selector = load_experiments_data_spe(
     runs=ALL_RUNS, case='solver_selection'
 )
@@ -175,10 +196,12 @@ df_sim, df_perf = make_pandas(
 )
 df_sim.head()
 
-# %% [markdown]
+
 # Below, we compute statistics for the table in Section 6.2
 
-# %%
+# In[9]:
+
+
 y_by_solver_id = [[] for _ in range(num_solvers)]
 success_failure_by_solver_id = [[] for _ in range(num_solvers)]
 for row in df_perf.itertuples(index=False):
@@ -204,7 +227,10 @@ for x in success_failure_by_solver_id:
 
 print(num_always_success, num_always_failure, num_swinging)
 
-# %%
+
+# In[10]:
+
+
 import pandas as pd
 
 batch_size = 64
@@ -227,10 +253,12 @@ stats = {
 }
 pd.DataFrame(stats).T.round(2)
 
-# %% [markdown]
+
 # The cells below make various figures for Section 6.2
 
-# %%
+# In[11]:
+
+
 import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
 
@@ -265,7 +293,7 @@ _ = plt.boxplot(
     showmeans=True,
     meanprops=dict(linestyle="-", linewidth=1, color="red"),  # mean as red line
     flierprops=dict(marker="", linestyle="none"),  # disables outliers
-    whis=[0, 100],  # whiskers go to min and max
+    whis=[10, 90],
 )
 
 
@@ -276,25 +304,27 @@ plt.xticks(
     [f'Batch {i+1}' for i in batches] + [f'Sim {x[0]+1}' if len(x)==1 else f'Sim {min(x)+1}-{max(x)+1}' for x in sims],
     rotation=-75
 )
-plt.text(2, 5.4, 'Sim 1', ha='center')
-plt.text(4.5, 5.4, 'Sim 2', ha='center')
+plt.text(2, 2.2, 'Sim 1', ha='center')
+plt.text(4.5, 2.2, 'Sim 2', ha='center')
 
 plt.xlim(left=0.5)
 
 mean_line = mlines.Line2D([], [], color='red', linestyle='-', linewidth=1, label='Mean')
 iqr_box = mpatches.Patch(facecolor='lightblue', edgecolor='black', label='Q1–Q3')
-plt.legend(handles=[iqr_box, mean_line], loc='upper right')
+whiskers_legend = mlines.Line2D([], [], color='black', linewidth=1, label='10%–90%')
+plt.legend(handles=[iqr_box, mean_line, whiskers_legend], loc='upper right')
 
-
-# plt.xlabel("Batch number Sequence B")
 plt.title('Sequence A Solver Selection')
 
-plt.ylim(top=7, bottom=0)
+plt.ylim(top=3, bottom=0.3)
 plt.ylabel(r"Linear solver run time, s")
 plt.tight_layout()
 plt.savefig("figures/spe_boxplot_batches_and_simulations.png", dpi=600)
 
-# %%
+
+# In[12]:
+
+
 import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
 
@@ -329,7 +359,7 @@ plt.boxplot(
     showmeans=True,
     meanprops=dict(linestyle="-", linewidth=1, color="red"),  # mean as red line
     flierprops=dict(marker="", linestyle="none"),  # disables outliers
-    whis=[0, 100],  # whiskers go to min and max
+    whis=[1, 99],
 )
 plt.xticks(np.arange(1, len(bins) + 1), xticklabels, rotation=-75)
 plt.title("Sequence A Solver Selection")
@@ -340,8 +370,9 @@ plt.ylabel(r"Linear solver run time, s")
 
 mean_line = mlines.Line2D([], [], color='red', linestyle='-', linewidth=1, label='Mean')
 iqr_box = mpatches.Patch(facecolor='lightblue', edgecolor='black', label='Q1–Q3')
-plt.legend(handles=[mean_line, iqr_box], loc='upper left')
-# plt.ylim(top=4)
+whiskers_legend = mlines.Line2D([], [], color='black', linewidth=1, label='1%–99%')
+plt.legend(handles=[mean_line, iqr_box, whiskers_legend], loc='upper left')
+plt.ylim(top=1.2, bottom=0.4)
 
 plt.tight_layout()
 plt.savefig("figures/spe_boxplot_fourier.png", dpi=600)
@@ -349,7 +380,10 @@ plt.savefig("figures/spe_boxplot_fourier.png", dpi=600)
 print([len(x) for x in perf_data_per_dt])
 print('Outliers, %:', len(perf_data_per_dt[-1]) / sum([len(x) for x in perf_data_per_dt]) * 100)
 
-# %%
+
+# In[13]:
+
+
 from solver_selection_thm.solver_space import explain_decisions
 
 solver_space = solver_selector.solver_space
@@ -374,22 +408,27 @@ df_perf_detailed
 
 def make_hist(df: pd.DataFrame, label: str):
     bins = 30
-    bins = np.linspace(1, 4, bins, endpoint=True)
+    xright = 3
+    bins = np.linspace(0, xright, bins, endpoint=True)
     y = df.reward[df.reward > -200]
     y = np.exp(-y)
+    plt.xlim(left=0, right=xright)
     plt.hist(y, label=f'{label}, {y.size} points', alpha=0.6, bins=bins, density=True, edgecolor="black", histtype='stepfilled')
 
 plt.figure(figsize=(3,2))
-make_hist(df_perf_detailed[df_perf_detailed['PetscFieldSplitScheme'] == True], label='S.-AMG')
 make_hist(df_perf_detailed[df_perf_detailed['PetscCompositeScheme'] == True], label='CPR')
+make_hist(df_perf_detailed[df_perf_detailed['PetscFieldSplitScheme'] == True], label='S.-AMG')
 plt.ylabel('Normalized distributions')
 plt.xlabel('Linear solver run time, s')
-plt.title('Sequence A')
+plt.title('Sequence A Solver Selection')
 plt.legend(loc='upper right')
 plt.tight_layout()
 plt.savefig('figures/spe_system_amg_vs_cpr.png', dpi=600)
 
-# %%
+
+# In[14]:
+
+
 plt.figure(figsize=(3,2))
 selection_overhead = np.array(df_perf[df_perf.seq_id == ALL_RUNS[4]].predict_time)
 feedback_overhead = np.array(df_perf[df_perf.seq_id == ALL_RUNS[4]].fit_time)
@@ -403,12 +442,15 @@ plt.tight_layout()
 plt.savefig('figures/spe_ml_overhead.png', dpi=600)
 print('Mean selection overhead, s:', selection_overhead.mean(), '+-', selection_overhead.std())
 
-# %%
+
+# In[15]:
+
+
 data = np.exp(-df_perf.reward[df_perf.reward > -200])
 data_rand = np.exp(-df_perf_rand.reward[df_perf_rand.reward > -200])
 
 bins = 200
-upper_lim = 8
+upper_lim = 5
 bins = np.linspace(min(data_rand), upper_lim, bins)
 plt.figure(figsize=(3,2))
 plt.hist(data_rand, bins=bins, density=False, alpha=0.6, edgecolor="black", label='Random', histtype='stepfilled')
@@ -416,20 +458,23 @@ plt.hist(data, bins=bins, density=False, alpha=0.6, edgecolor="black", label='So
 
 plt.xlabel("Linear solver run time, s")
 plt.ylabel("Count")
+plt.yscale('log')
 plt.legend()
 ax = plt.gca()
 ax.yaxis.tick_right()
 ax.yaxis.set_label_position("right")
 plt.title('Sequence A')
 plt.tight_layout()
-plt.savefig('figures/spe_runtime_histogram.png', dpi=600)
+# plt.savefig('figures/spe_runtime_histogram.png', dpi=600)
 
 print(np.sum(data > upper_lim), np.sum(data_rand > upper_lim))
 
-# %% [markdown]
+
 # # 6.3 Comparing Againts Optimal Solver
 
-# %%
+# In[16]:
+
+
 sim_data_expert, perf_data_expert, solver_selector = load_experiments_data_spe(
     runs=ALL_RUNS, case='expert'
 )
@@ -443,12 +488,22 @@ df_sim_expert, df_perf_expert = make_pandas(
 )
 df_sim_expert.tail()
 
-# %%
+
+# In[17]:
+
+
 import pandas as pd
+
+success_failure_by_solver_id = [[] for _ in range(num_solvers)]
+for row in df_perf_expert.itertuples(index=False):
+    if row.reward <= -200:
+        success_failure_by_solver_id[row.decision_idx].append(False)
+    else:
+        success_failure_by_solver_id[row.decision_idx].append(True)
 
 success = df_perf_expert.reward > -200
 ysuccess = np.exp(-df_perf_expert[success].reward)
-num_solvers_tried = sum(len(x) != 0 for x in success_failure_by_solver_id)
+num_solvers_tried = sum(len(x) != 0 for x in success_failure_by_solver_id)  # TODO!
 
 stats = {
     'num_solvers': [num_solvers],
@@ -462,7 +517,45 @@ stats = {
 }
 pd.DataFrame(stats).T
 
-# %%
+
+# In[18]:
+
+
+sim_data_petsc_default, perf_data_petsc_default, _ = load_experiments_data_spe(
+    runs=ALL_RUNS, case='petsc_default'
+)
+
+df_sim_petsc_default, df_perf_petsc_default = make_pandas(
+    sim_data=sim_data_petsc_default,
+    perf_data=perf_data_petsc_default,
+    seq_ids=ALL_RUNS,
+)
+df_sim_petsc_default.tail()
+
+
+# In[19]:
+
+
+import pandas as pd
+
+success = df_perf_petsc_default.reward > -200
+ysuccess = np.exp(-df_perf_petsc_default[success].reward)
+
+stats = {
+    'num_solvers': [num_solvers],
+    'num_points': df_perf_expert.shape[0],
+    'Success %': np.sum(success[batch_size:]) / (success[batch_size:].size) * 100,
+    'Run time avg': ysuccess.mean(),
+    'Run time median': ysuccess.median(),
+    'Run time min': ysuccess.min(),
+    'Run time max': ysuccess.max(),
+}
+pd.DataFrame(stats).T
+
+
+# In[20]:
+
+
 from scipy.interpolate import interp1d
 
 plt.figure(figsize=(3,2))
@@ -472,11 +565,11 @@ for seq_id in ALL_RUNS:
     y = np.array(df_sim_rand.real_solve_time[df_sim_rand.seq_id == seq_id])
     y = np.cumsum(y)
 
-    plt.plot(y, color="C0", alpha=0.4)
+    # plt.plot(y, color="C0", alpha=0.4)
 
     x_old = np.arange(y.size)
     f = interp1d(x_old, y, kind="linear")
-    x_new = np.linspace(0, 2524, 2600, endpoint=True)
+    x_new = np.linspace(0, len(x_old) - 1, 2600, endpoint=True)
     resampled.append(f(x_new))
 print('Mean run time random:', np.mean(resampled, axis=0).max())
 
@@ -484,76 +577,100 @@ plt.plot(x_new, np.mean(resampled, axis=0), color="C0", linewidth=2, label='Rand
 
 resampled = []
 for seq_id in ALL_RUNS:
-    y = np.array(df_sim.real_solve_time[df_sim.seq_id == seq_id])
+    y = np.array(df_sim_petsc_default.real_solve_time[df_sim_petsc_default.seq_id == seq_id])
     y = np.cumsum(y)
 
-    plt.plot(y, color="C1", alpha=0.4)
+    # plt.plot(y, color="C3", alpha=0.4)
 
     x_old = np.arange(y.size)
     f = interp1d(x_old, y, kind="linear")
-    x_new = np.linspace(0, 2524, 2600, endpoint=True)
+    x_new = np.linspace(0, len(x_old) - 1, 2600, endpoint=True)
     resampled.append(f(x_new))
 
-plt.plot(x_new, np.mean(resampled, axis=0), color="C1", linewidth=2, label='Selection', alpha=1)
-print('Mean run time solver_selection', np.mean(resampled, axis=0).max())
+plt.plot(x_new, np.mean(resampled, axis=0), color="C3", linewidth=2, label='PETSc default', alpha=1)
+print('Mean run time petsc default:', np.mean(resampled, axis=0).max())
 
 resampled = []
 for seq_id in ALL_RUNS:
     y = np.array(df_sim_expert.real_solve_time[df_sim_expert.seq_id == seq_id])
     y = np.cumsum(y)
 
-    plt.plot(y, color="C2", alpha=0.4)
+    # plt.plot(y, color="C2", alpha=0.4)
 
     x_old = np.arange(y.size)
     f = interp1d(x_old, y, kind="linear")
-    x_new = np.linspace(0, 2524, 2600, endpoint=True)
+    x_new = np.linspace(0, len(x_old) - 1, 2600, endpoint=True)
     resampled.append(f(x_new))
 
 plt.plot(x_new, np.mean(resampled, axis=0), color="C2", linewidth=2, label='Expert', alpha=1)
 print('Mean run time expert:', np.mean(resampled, axis=0).max())
 
-plt.yticks([0, 2000, 4550, 7200, 9000])
+resampled = []
+for seq_id in ALL_RUNS:
+    y = np.array(df_sim.real_solve_time[df_sim.seq_id == seq_id])
+    y = np.cumsum(y)
+
+    # plt.plot(y, color="C1", alpha=0.4)
+
+    x_old = np.arange(y.size)
+    f = interp1d(x_old, y, kind="linear")
+    x_new = np.linspace(0, len(x_old) - 1, 2600, endpoint=True)
+    resampled.append(f(x_new))
+
+plt.plot(x_new, np.mean(resampled, axis=0), color="C1", linewidth=2, label='Selection', alpha=1)
+print('Mean run time solver_selection', np.mean(resampled, axis=0).max())
+
+# plt.yticks([0, 1000, 2000])
 
 
 plt.ylabel('Cumulative linear\n solve time, s')
 plt.xlabel('Num. linear systems seen')
-plt.legend(loc='lower center')
+# plt.legend(loc='upper left')
 plt.title('Sequence A')
 
-plt.ylim(bottom=0, top=10000)
+plt.ylim(bottom=0, top=3000)
 
 plt.tight_layout()
 plt.savefig('figures/spe_runtime_expert.png', dpi=600)
 
-# %%
+
+# In[21]:
+
+
 data = np.exp(-df_perf.reward[df_perf.reward > -200])
 data_rand = np.exp(-df_perf_rand.reward[df_perf_rand.reward > -200])
 data_expert = np.exp(-df_perf_expert.reward[df_perf_expert.reward > -200])
+data_petsc_default = np.exp(-df_perf_petsc_default.reward[df_perf_petsc_default.reward > -200])
 
 bins = 200
-upper_lim = 2
+upper_lim = 2.5
 bins = np.linspace(min(data_rand), upper_lim, bins)
 plt.figure(figsize=(3,2))
-plt.hist(data_rand, bins=bins, density=False, alpha=0.6, edgecolor="black", label='Random', histtype='stepfilled')
-plt.hist(data, bins=bins, density=False, alpha=0.6, edgecolor="black", label='Solver Selection', histtype='stepfilled')
-plt.hist(data_expert, bins=bins, density=False, alpha=0.6, edgecolor="black", label='Expert', histtype='stepfilled')
+plt.hist(data_rand, bins=bins, density=False, alpha=0.4, edgecolor="black", label='Random', histtype='stepfilled', color='C0')
+plt.hist(data_petsc_default, bins=bins, density=False, alpha=0.6, edgecolor="black", label='PETSc default', histtype='stepfilled', color='C3')
+plt.hist(data_expert, bins=bins, density=False, alpha=0.6, edgecolor="black", label='Oracle', histtype='stepfilled', color='C2')
+plt.hist(data, bins=bins, density=False, alpha=0.4, edgecolor="black", label='Selection', histtype='stepfilled', color='C1')
 
 
 plt.xlabel("Linear solver run time, s")
 plt.ylabel("Count")
-plt.legend()
+plt.yscale('log')
+# plt.legend()
 ax = plt.gca()
 ax.yaxis.tick_right()
 ax.yaxis.set_label_position("right")
-plt.title('Sequence B')
+plt.title('Sequence A')
 plt.tight_layout()
+plt.savefig('figures/spe_runtime_histogram.png', dpi=600)
 
-# %% [markdown]
+
 # # How many bad solvers?
 # 
 # How many congifurations correspond to the "naive" group?
 
-# %%
+# In[22]:
+
+
 import pandas as pd
 from solver_selection_thm.solver_space import explain_decisions
 
@@ -561,7 +678,10 @@ solver_space = solver_selector.solver_space
 decision_names, decision_ranges = explain_decisions(solver_space)
 decision_names
 
-# %%
+
+# In[23]:
+
+
 num_with_ilu = (solver_space.all_decisions_encoding[:, 0] == True).sum()
 num_with_sor = (solver_space.all_decisions_encoding[:, 2] == True).sum()
 num_with_pbjacobi = (solver_space.all_decisions_encoding[:, 3] == True).sum()
@@ -569,5 +689,4 @@ total = solver_space.all_decisions_encoding.shape[0]
 print(f'{num_with_ilu = }, {num_with_sor = }, {num_with_pbjacobi = }, {total = }')
 print(num_with_ilu + num_with_sor + num_with_pbjacobi)
 print((num_with_ilu + num_with_sor + num_with_pbjacobi) / total * 100, '%')
-
 
