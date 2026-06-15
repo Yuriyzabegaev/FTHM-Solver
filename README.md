@@ -123,5 +123,4 @@ If you want to re-utilize the code in your software, I recommend looking at http
 
 # Citing
 
-If you want to cite this code in your research, we ask you to cite the following preprint: https://arxiv.org/abs/2510.04920
-The link will be updated upon journal publication.
+If you want to cite this code in your research, we ask you to cite the following publication: https://doi.org/10.1007/s44207-026-00013-y
