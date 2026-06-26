@@ -63,3 +63,6 @@ When the experiments are complete, you can use the jupyter notebooks to visualiz
 # Acknowledgement
 
 This project has received funding from the VISTA program, The Norwegian Academy of Science and Letters and Equinor, from the Research Council of Norway (grant 308733), and from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation programme (grant agreement No 101002507).
+
+# Citing
+If you want to cite this code in your research, we ask you to cite the following publication: https://doi.org/10.1016/j.cma.2025.118440
